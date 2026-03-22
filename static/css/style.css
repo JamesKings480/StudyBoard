@@ -1,0 +1,86 @@
+:root {
+    --sb-primary: #4A90D9;
+    --sb-bg: #f5f7fa;
+    --sb-purple: #6366f1;
+    --sb-purple-hover: #5558e6;
+}
+
+body {
+    background-color: var(--sb-bg);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.auth-badge {
+    display: inline-block;
+    background-color: var(--sb-purple);
+    color: #ffffff;
+    padding: 0.35rem 1.25rem;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.auth-badge .bi {
+    font-size: 0.8rem;
+}
+
+.auth-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.btn-auth {
+    background-color: var(--sb-purple);
+    border-color: var(--sb-purple);
+    color: #ffffff;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.65rem 1rem;
+}
+
+.btn-auth:hover {
+    background-color: var(--sb-purple-hover);
+    border-color: var(--sb-purple-hover);
+    color: #ffffff;
+}
+
+.auth-error-box {
+    border: 2px dashed #f56565;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    text-align: center;
+}
+
+.auth-error-box .text-danger {
+    font-size: 0.875rem;
+}
+
+.auth-link {
+    color: var(--sb-purple);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-link:hover {
+    color: var(--sb-purple-hover);
+    text-decoration: underline;
+}
+
+.card {
+    border: none;
+    border-radius: 12px;
+}
+
+.alert {
+    border: none;
+    border-radius: 10px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--sb-primary);
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 217, 0.2);
+}
