@@ -39,8 +39,6 @@ def inject_sidebar_subjects():
     return dict(sidebar_subjects=[])
 
 
-# ── Authentication ──────────────────────────────────────────────
-
 @app.route('/')
 def index():
     if current_user.is_authenticated:
