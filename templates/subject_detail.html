@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}{{ subject.name }} - Studyboard{% endblock %}
+{% block content %}
+<!-- Subject Header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="fw-bold mb-1">
+            <span class="subject-dot me-2" style="background-color: {{ subject.colour }};"></span>
+            {{ subject.name }}
+        </h3>
+        <small class="text-muted">
+            {{ subject.year_level }} | Assessments: {{ assessments|length }} | Flashcards: {{ total_cards }} | Predicted: {{ predicted_grade|round(1) }}%
+        </small>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <a href="{{ url_for('edit_subject', subject_id=subject.id) }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Edit
+        </a>
+        <form method="POST" action="{{ url_for('delete_subject', subject_id=subject.id) }}"
+              class="d-inline confirm-delete-form" data-confirm-msg="Delete this subject and all its data?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash me-1"></i>Delete
+            </button>
+        </form>
+        <input type="hidden" id="timerSubject" value="{{ subject.id }}">
+        <button class="btn btn-primary btn-sm" id="timerStart" onclick="startTimer()">
+            <i class="bi bi-play-fill me-1"></i>Start Study Session
+        </button>
+        <button class="btn btn-warning btn-sm" id="timerPause" onclick="pauseTimer()" style="display:none;">
+            <i class="bi bi-pause-fill me-1"></i>Pause
+        </button>
+        <button class="btn btn-outline-success btn-sm" id="timerResume" onclick="resumeTimer()" style="display:none;">
+            <i class="bi bi-play-fill me-1"></i>Resume
+        </button>
+        <button class="btn btn-danger btn-sm" id="timerStop" onclick="stopTimer()" style="display:none;">
+            <i class="bi bi-stop-fill me-1"></i>Save
+        </button>
+        <span class="fw-bold font-monospace" id="timerDisplay" style="display:none; font-size: 0.9rem;">00:00:00</span>
+    </div>
+</div>
+
+<!-- Row 1: Assessments | Flashcards | Tasks -->
+<div class="row g-3 mb-3">
+    <!-- Assessments -->
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">Assessments</h6>
+                <a href="{{ url_for('create_assessment', subject_id=subject.id) }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus me-1"></i>New
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if assessments %}
+                <div class="list-group list-group-flush">
+                    {% for a in assessments %}
+                    <a href="{{ url_for('assessment_detail', assessment_id=a.id) }}" class="list-group-item list-group-item-action py-2">
+                        <div class="fw-semibold" style="font-size: 0.9rem;">{{ a.name }}</div>
+                        <small class="text-muted">
+                            {{ a.assessment_type }} | {{ a.weighting }}%
+                            {% if a.status != 'Completed' %}
+                            {% set days_left = (a.due_date - today).days %}
+                            | {% if days_left >= 0 %}{{ days_left }} days left{% else %}Overdue{% endif %}
+                            {% endif %}
+                        </small>
+                        {% if a.mark is not none %}
+                        <span class="badge {% if a.mark >= 80 %}bg-success{% elif a.mark >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %} float-end" style="font-size: 0.7rem;">{{ a.mark|round(0)|int }}%</span>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+                <div class="px-3 py-2">
+                    <a href="#" class="text-primary small text-decoration-none">View assessment timeline</a>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    No assessments yet. Click "+ New" to add one.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Flashcards -->
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">Flashcards</h6>
+                <span class="text-muted" style="font-size: 0.8rem;">{{ total_cards }} cards</span>
+            </div>
+            <div class="card-body">
+                {% if last_quiz_total > 0 %}
+                <div class="mb-2">
+                    <small class="text-muted">Last quiz score:</small>
+                    <span class="fw-bold">{{ last_quiz_correct }}/{{ last_quiz_total }} ({{ ((last_quiz_correct / last_quiz_total) * 100)|round(0)|int }}%)</span>
+                </div>
+                {% endif %}
+
+                {% if weak_topics %}
+                <div class="mb-2">
+                    <small class="text-muted fw-bold">Weak Topics</small>
+                    <div>
+                        {% for t in weak_topics[:3] %}
+                        <span class="weak-topic" style="font-size: 0.8rem;">{{ t.name }}</span>{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if strong_topics %}
+                <div class="mb-3">
+                    <small class="text-muted fw-bold">Strong Topics</small>
+                    <div>
+                        {% for t in strong_topics[:3] %}
+                        <span class="strong-topic" style="font-size: 0.8rem;">{{ t.name }}</span>{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if flashcards %}
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('quiz', subject_id=subject.id) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-play-circle me-1"></i>Start Quiz
+                    </a>
+                    <a href="{{ url_for('create_flashcard', subject_id=subject.id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-plus me-1"></i>+ Add Cards
+                    </a>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-2">
+                    <p class="small mb-2">No flashcards yet.</p>
+                    <a href="{{ url_for('create_flashcard', subject_id=subject.id) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-plus me-1"></i>Add Cards
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tasks -->
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">Tasks</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if subject_tasks %}
+                <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                    {% for t in subject_tasks[:10] %}
+                    <div class="list-group-item d-flex align-items-center py-2">
+                        <form method="POST" action="{{ url_for('toggle_task', task_id=t.id) }}" class="me-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary task-check-btn">
+                                <i class="bi bi-{% if t.status == 'Complete' %}check-square-fill{% else %}square{% endif %}"></i>
+                            </button>
+                        </form>
+                        <div class="flex-grow-1">
+                            <div class="{% if t.status == 'Complete' %}text-decoration-line-through text-muted{% endif %}" style="font-size: 0.85rem;">
+                                {{ t.title }}
+                            </div>
+                            <small class="text-muted" style="font-size: 0.7rem;">
+                                Due {{ t.scheduled_date.strftime('%b %d') }}
+                                {% if t.scheduled_date == today and t.status != 'Complete' %}
+                                <span class="badge bg-primary" style="font-size: 0.6rem;">Today</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                        {% if t.assessment %}
+                        <span class="badge" style="background-color: {{ subject.colour }}; font-size: 0.6rem;">{{ t.assessment.name[:15] }}</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    No tasks yet.
+                </div>
+                {% endif %}
+                <div class="px-3 py-2">
+                    <a href="#" class="text-primary small text-decoration-none">+ Add task</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Performance & Predicted Grade | Class Notes | Study Time -->
+<div class="row g-3">
+    <!-- Performance and Predicted Grade -->
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Performance and Predicted Grade</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-baseline gap-2 mb-2">
+                    <small class="text-muted">Current predicted internal:</small>
+                    <span class="fs-3 fw-bold text-primary">{{ predicted_grade|round(1) }}%</span>
+                </div>
+                <small class="text-muted d-block mb-2">
+                    Completed weight: {{ completed_weight|round(0)|int }}% | Remaining: {{ remaining_weight|round(0)|int }}%
+                </small>
+                <div class="progress mb-3" style="height: 10px;">
+                    <div class="progress-bar {% if predicted_grade >= 80 %}bg-success{% elif predicted_grade >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                         style="width: {{ predicted_grade }}%"></div>
+                </div>
+
+                {% if remaining_weight > 0 %}
+                <div class="ai-recommendation mb-3">
+                    <small>Target: 80% | Need average of <strong>--</strong>% on remaining assessments</small>
+                </div>
+                {% endif %}
+
+                <small class="text-muted fw-bold d-block mb-1">Assessment marks:</small>
+                {% for a in assessments %}
+                    {% if a.mark is not none %}
+                    <small class="d-block text-muted">
+                        {{ a.name }}: <strong>{{ a.mark|round(0)|int }}%</strong> ({{ a.weighting }}%)
+                    </small>
+                    {% endif %}
+                {% endfor %}
+
+                <hr class="my-2">
+                <label class="form-label small text-muted mb-1">Calculate required mark:</label>
+                <div class="input-group input-group-sm">
+                    <input type="number" id="targetGrade" class="form-control" value="80" min="0" max="100">
+                    <span class="input-group-text">%</span>
+                    <button class="btn btn-primary" onclick="calculateRequired({{ subject.id }})">Calculate</button>
+                </div>
+                <div id="predictResult" class="mt-1 small fw-semibold"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Class Notes -->
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">Class Notes</h6>
+                <button class="btn btn-sm btn-outline-primary" disabled>
+                    <i class="bi bi-upload me-1"></i>Upload
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="text-muted small">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                        <span>Ch8_FiscalPolicy_notes.pdf</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-file-earmark-word text-primary me-2"></i>
+                        <span>GDP_and_growth_summary.docx</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                        <span>Trade_policy_handout.pdf</span>
+                    </div>
+                </div>
+                <small class="text-muted">3 files | 2.4 MB total</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Study Time -->
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Study Time</h6>
+            </div>
+            <div class="card-body">
+                <div class="bar-chart mb-3" style="height: 80px;">
+                    {% set day_labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] %}
+                    {% set max_subj = subject_daily|max if subject_daily and subject_daily|max > 0 else 1 %}
+                    {% for i in range(7) %}
+                    <div class="bar-col">
+                        {% if subject_daily[i] > 0 %}
+                        <div class="bar" style="height: {{ (subject_daily[i] / max_subj * 100)|int }}%; background-color: {{ subject.colour }};{% if i == today.weekday() %} opacity: 1;{% else %} opacity: 0.7;{% endif %}"></div>
+                        {% else %}
+                        <div class="bar" style="height: 2px; background-color: #e9ecef;"></div>
+                        {% endif %}
+                        <span class="bar-label">{{ day_labels[i] }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <div>
+                        <span class="text-muted small">This week:</span>
+                        <span class="fw-bold">{{ "%.0f"|format(weekly_minutes // 60) }}h {{ "%.0f"|format(weekly_minutes % 60) }}m</span>
+                    </div>
+                    <div>
+                        <span class="text-muted small">This month:</span>
+                        <span class="fw-bold">{{ "%.0f"|format(monthly_minutes // 60) }}h {{ "%.0f"|format(monthly_minutes % 60) }}m</span>
+                    </div>
+                </div>
+                <small class="text-muted fw-bold d-block mt-2">Recent sessions:</small>
+                <small class="text-muted">Today: {{ "%.0f"|format(weekly_minutes) }}min | Yesterday: 0min | Last: 0min</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flashcard list -->
+{% if flashcards %}
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">All Flashcards</h6>
+                <a href="{{ url_for('create_flashcard', subject_id=subject.id) }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus me-1"></i>New
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                    {% for card in flashcards %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>Q:</strong> {{ card.question[:80] }}{% if card.question|length > 80 %}...{% endif %}
+                            </div>
+                            <div class="btn-group btn-group-sm ms-2">
+                                <a href="{{ url_for('edit_flashcard', flashcard_id=card.id) }}" class="btn btn-outline-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('delete_flashcard', flashcard_id=card.id) }}"
+                                      class="d-inline confirm-delete-form" data-confirm-msg="Delete this flashcard?">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        <small class="text-muted"><strong>A:</strong> {{ card.answer[:80] }}{% if card.answer|length > 80 %}...{% endif %}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
