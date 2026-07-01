@@ -3,7 +3,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_wtf.csrf import CSRFProtect
 from datetime import date
 from config import Config
-from models import db, User, Subject
+from models import db, User, Subject, Assessment, Task
 from forms import RegistrationForm, LoginForm, SubjectForm
 
 app = Flask(__name__)
@@ -90,7 +90,18 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return '<h1>Dashboard</h1><p>Welcome, ' + current_user.email + '</p><a href="/subjects">View Subjects</a> | <a href="/logout">Log out</a>'
+    today = date.today()
+    subjects = Subject.query.filter_by(user_id=current_user.id).all()
+    upcoming_assessments = Assessment.query.join(Subject).filter(
+        Subject.user_id == current_user.id, Assessment.due_date >= today, Assessment.status != 'Completed').order_by(Assessment.due_date).limit(10).all()
+    todays_tasks = Task.query.join(Assessment).join(Subject).filter(Subject.user_id == current_user.id, Task.scheduled_date <= today, Task.status == 'Incomplete').order_by(Task.scheduled_date).all()
+    day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    return render_template('dashboard.html',
+                           subjects=subjects,
+                           upcoming_assessments=upcoming_assessments,
+                           todays_tasks=todays_tasks,
+                           day_names=day_names,
+                           today=today)
 
 @app.route('/subjects')
 @login_required
