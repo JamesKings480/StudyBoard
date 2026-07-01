@@ -92,16 +92,10 @@ def logout():
 def dashboard():
     today = date.today()
     subjects = Subject.query.filter_by(user_id=current_user.id).all()
-    upcoming_assessments = Assessment.query.join(Subject).filter(
-        Subject.user_id == current_user.id, Assessment.due_date >= today, Assessment.status != 'Completed').order_by(Assessment.due_date).limit(10).all()
+    upcoming_assessments = Assessment.query.join(Subject).filter(Subject.user_id == current_user.id, Assessment.due_date >= today, Assessment.status != 'Completed').order_by(Assessment.due_date).limit(10).all()
     todays_tasks = Task.query.join(Assessment).join(Subject).filter(Subject.user_id == current_user.id, Task.scheduled_date <= today, Task.status == 'Incomplete').order_by(Task.scheduled_date).all()
     day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return render_template('dashboard.html',
-                           subjects=subjects,
-                           upcoming_assessments=upcoming_assessments,
-                           todays_tasks=todays_tasks,
-                           day_names=day_names,
-                           today=today)
+    return render_template('dashboard.html', subjects=subjects, upcoming_assessments=upcoming_assessments, todays_tasks=todays_tasks, day_names=day_names, today=today)
 
 @app.route('/subjects')
 @login_required
@@ -114,12 +108,7 @@ def subjects_list():
 def create_subject():
     form = SubjectForm()
     if form.validate_on_submit():
-        subject = Subject(
-            name=form.name.data.strip(),
-            colour=form.colour.data or '#4A90D9',
-            year_level=form.year_level.data,
-            user_id=current_user.id
-        )
+        subject = Subject(name=form.name.data.strip(), colour=form.colour.data or '#4A90D9', year_level=form.year_level.data, user_id=current_user.id)
         db.session.add(subject)
         db.session.commit()
         flash(f'Subject "{subject.name}" created successfully!', 'success')
