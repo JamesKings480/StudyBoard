@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Studyboard{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="fw-bold mb-0">Dashboard</h3>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Upcoming Assessments</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if upcoming_assessments %}
+                <div class="list-group list-group-flush">
+                    {% for a in upcoming_assessments %}
+                    <a href="{{ url_for('assessment_detail', assessment_id=a.id) }}" class="list-group-item list-group-item-action py-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-semibold" style="font-size: 0.9rem;">{{ a.name }}</div>
+                                <small class="text-muted">
+                                    <span class="subject-dot me-1" style="background-color: {{ a.subject.colour }}; width: 8px; height: 8px;"></span>
+                                    {{ a.subject.name }} | {{ a.weighting }}%
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <div class="small text-muted">Due {{ a.due_date.strftime('%b %d') }}</div>
+                                <div class="small text-muted">{{ (a.due_date - today).days }} days left</div>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-check-circle fs-1 d-block mb-2"></i>
+                    No upcoming assessments
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Study Timer</h6>
+            </div>
+            <div class="card-body text-center d-flex flex-column align-items-center justify-content-center">
+                {% if subjects %}
+                <div class="circular-timer mb-3">
+                    <svg viewBox="0 0 150 150">
+                        <circle class="timer-bg" cx="75" cy="75" r="65"/>
+                        <circle class="timer-progress" cx="75" cy="75" r="65"/>
+                    </svg>
+                    <div class="timer-text">25:00</div>
+                </div>
+                <button class="btn btn-primary px-4 mb-2">Start Session</button>
+                <select class="form-select form-select-sm w-auto mt-1" style="font-size: 0.8rem;">
+                    {% for s in subjects %}
+                    <option>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <p class="text-muted">Add a subject first to start timing study sessions.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Predicted Grades</h6>
+            </div>
+            <div class="card-body">
+                {% if subjects %}
+                    {% for s in subjects %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span style="font-size: 0.9rem;">{{ s.name }}</span>
+                            <span class="fw-bold" style="font-size: 0.9rem;">--%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar" style="width: 0%; background-color: {{ s.colour }};"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-graph-up fs-1 d-block mb-2"></i>
+                    Add subjects and marks to see predictions
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Today's Tasks | Daily Study Time | Quick Actions -->
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">Today's Tasks</h6>
+                <span class="badge bg-primary">{{ todays_tasks|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if todays_tasks %}
+                <div class="list-group list-group-flush">
+                    {% for t in todays_tasks %}
+                    <div class="list-group-item d-flex align-items-center py-2">
+                        <form method="POST" action="{{ url_for('toggle_task', task_id=t.id) }}" class="me-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary task-check-btn">
+                                <i class="bi bi-square"></i>
+                            </button>
+                        </form>
+                        <div>
+                            <div style="font-size: 0.9rem;">{{ t.title }}</div>
+                            <small>
+                                <span class="badge rounded-pill" style="background-color: {{ t.assessment.subject.colour }}; font-size: 0.6rem;">
+                                    {{ t.assessment.subject.name }}
+                                </span>
+                                <span class="text-muted" style="font-size: 0.75rem;">{{ t.assessment.name }}</span>
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-emoji-smile fs-1 d-block mb-2"></i>
+                    No tasks due today
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">Daily Study Time</h6>
+                <small class="text-muted">This week: 0 min</small>
+            </div>
+            <div class="card-body">
+                <div class="bar-chart mb-3">
+                    {% for i in range(7) %}
+                    <div class="bar-col">
+                        <div class="bar" style="height: 2px; background-color: #e9ecef;"></div>
+                        <span class="bar-label">{{ day_names[i] }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="chart-legend mt-2">
+                    {% for s in subjects %}
+                    <span><span class="legend-dot" style="background-color: {{ s.colour }};"></span>{{ s.name }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('create_subject') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-plus-circle me-2"></i>Add New Subject
+                    </a>
+                    <a href="{{ url_for('subjects_list') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-book me-2"></i>View All Subjects
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
