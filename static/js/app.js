@@ -59,6 +59,23 @@ function getCSRFToken() {
     return '';
 }
 
+function setupColourBubbles() {
+    var bubbles = document.querySelectorAll('.colour-bubble');
+    var input = document.getElementById('colourInput');
+    if (!bubbles.length || !input) return;
+
+    bubbles.forEach(function (bubble) {
+        if (bubble.getAttribute('data-colour') === input.value) {
+            bubble.classList.add('selected');
+        }
+        bubble.addEventListener('click', function () {
+            bubbles.forEach(function (b) { b.classList.remove('selected'); });
+            bubble.classList.add('selected');
+            input.value = bubble.getAttribute('data-colour');
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     var alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(function (alert) {
@@ -68,4 +85,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 4000);
     });
     setupConfirmDeleteForms();
+    setupColourBubbles();
 });
