@@ -54,14 +54,23 @@
                 <div class="circular-timer mb-3">
                     <svg viewBox="0 0 150 150">
                         <circle class="timer-bg" cx="75" cy="75" r="65"/>
-                        <circle class="timer-progress" cx="75" cy="75" r="65"/>
+                        <circle class="timer-progress" cx="75" cy="75" r="65" id="timerCircle"/>
                     </svg>
-                    <div class="timer-text">25:00</div>
+                    <div class="timer-text" id="timerDisplay">00:00:00</div>
                 </div>
-                <button class="btn btn-primary px-4 mb-2">Start Session</button>
-                <select class="form-select form-select-sm w-auto mt-1" style="font-size: 0.8rem;">
+                <button class="btn btn-primary px-4 mb-2" id="timerStart" onclick="startTimer()">Start Session</button>
+                <button class="btn btn-warning px-4 mb-2" id="timerPause" onclick="pauseTimer()" style="display:none;">
+                    <i class="bi bi-pause-fill me-1"></i>Pause
+                </button>
+                <button class="btn btn-outline-success px-4 mb-2" id="timerResume" onclick="resumeTimer()" style="display:none;">
+                    <i class="bi bi-play-fill me-1"></i>Resume
+                </button>
+                <button class="btn btn-danger px-4 mb-2" id="timerStop" onclick="stopTimer()" style="display:none;">
+                    <i class="bi bi-stop-fill me-1"></i>Save & Stop
+                </button>
+                <select id="timerSubject" class="form-select form-select-sm w-auto mt-1" style="font-size: 0.8rem;">
                     {% for s in subjects %}
-                    <option>{{ s.name }}</option>
+                    <option value="{{ s.id }}">{{ s.name }}</option>
                     {% endfor %}
                 </select>
                 {% else %}
@@ -100,7 +109,6 @@
     </div>
 </div>
 
-<!-- Row 2: Today's Tasks | Daily Study Time | Quick Actions -->
 <div class="row g-3">
     <div class="col-lg-4">
         <div class="card h-100 shadow-sm">
@@ -145,14 +153,18 @@
         <div class="card h-100 shadow-sm">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-bold">Daily Study Time</h6>
-                <small class="text-muted">This week: 0 min</small>
+                <small class="text-muted">This week: {{ weekly_display }}</small>
             </div>
             <div class="card-body">
                 <div class="bar-chart mb-3">
                     {% for i in range(7) %}
                     <div class="bar-col">
+                        {% if daily_totals[i] > 0 %}
+                        <div class="bar" style="height: {{ (daily_totals[i] / max_daily * 100)|int }}%; background-color: var(--sb-primary);{% if i == today.weekday() %} opacity: 1;{% else %} opacity: 0.6;{% endif %}"></div>
+                        {% else %}
                         <div class="bar" style="height: 2px; background-color: #e9ecef;"></div>
-                        <span class="bar-label">{{ day_names[i] }}</span>
+                        {% endif %}
+                        <span class="bar-label{% if i == today.weekday() %} fw-bold text-dark{% endif %}">{{ day_names[i] }}</span>
                     </div>
                     {% endfor %}
                 </div>

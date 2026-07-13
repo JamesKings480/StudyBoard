@@ -12,7 +12,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(150), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    subjects = db.relationship('Subject', backref='user', lazy=True, cascade='all, delete-orphan')
+    study_sessions = db.relationship('StudySession', backref='user', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -31,6 +31,7 @@ class Subject(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     assessments = db.relationship('Assessment', backref='subject', lazy=True, cascade='all, delete-orphan')
+    study_sessions = db.relationship('StudySession', backref='subject', lazy=True, cascade='all, delete-orphan')
 
 class Assessment(db.Model):
     __tablename__ = 'assessments'
@@ -53,4 +54,13 @@ class Task(db.Model):
     scheduled_date = db.Column(db.Date, nullable=False)
     status = db.Column(db.String(20), nullable=False, default='Incomplete')
     assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+class StudySession(db.Model):
+    __tablename__ = 'study_sessions'
+    id = db.Column(db.Integer, primary_key=True)
+    duration_minutes = db.Column(db.Float, nullable=False, default=0)
+    date = db.Column(db.Date, nullable=False, default=date.today)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

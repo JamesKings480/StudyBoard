@@ -507,4 +507,18 @@ body {
 
 .colour-bubble.selected {
     border-color: #1e2a3a;
+.sb-logout-link {
+    display: inline-block;
+    color: #a0aec0;
+    font-size: 0.7rem;
+    text-decoration: none;
+    padding: 0.2rem 0.5rem;
+    margin-left: -0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sb-logout-link:hover {
+    background-color: var(--sb-sidebar-hover);
+    color: #ffffff;
 }
