@@ -485,6 +485,28 @@ body {
     font-size: 1.2rem;
 }
 
+.colour-bubbles {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+
+.colour-bubble {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.colour-bubble:hover {
+    transform: scale(1.1);
+}
+
+.colour-bubble.selected {
+    border-color: #1e2a3a;
 .sb-logout-link {
     display: inline-block;
     color: #a0aec0;

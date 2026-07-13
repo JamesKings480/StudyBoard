@@ -34,10 +34,7 @@ class LoginForm(FlaskForm):
     submit = SubmitField('Log In')
 
 class SubjectForm(FlaskForm):
-    name = StringField('Subject Name', validators=[
-        DataRequired(message='Subject name is required'),
-        Length(max=100)
-    ])
+    name = SelectField('Subject', validators=[DataRequired(message='Please select a subject')])
     colour = StringField('Colour', default='#4A90D9')
     year_level = SelectField('Year Level', choices=[
         ('Year 11', 'Year 11'),

@@ -27,6 +27,7 @@ class Subject(db.Model):
     name = db.Column(db.String(100), nullable=False)
     colour = db.Column(db.String(7), nullable=False, default='#4A90D9')
     year_level = db.Column(db.String(20), nullable=False, default='Year 12')
+    nesa_url = db.Column(db.String(300), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     assessments = db.relationship('Assessment', backref='subject', lazy=True, cascade='all, delete-orphan')

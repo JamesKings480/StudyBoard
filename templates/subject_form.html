@@ -9,17 +9,21 @@
                 <form method="POST" novalidate>
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
-                        <label for="name" class="form-label">Subject Name</label>
-                        {{ form.name(class="form-control", placeholder="e.g. Economics", id="name") }}
+                        <label for="name" class="form-label">Subject</label>
+                        {{ form.name(class="form-select", id="name") }}
                         {% for error in form.name.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
                         {% endfor %}
                     </div>
                     <div class="mb-3">
-                        <label for="colour" class="form-label">Colour</label>
-                        <input type="color" name="colour" id="colour"
-                               class="form-control form-control-color w-100"
-                               value="{{ form.colour.data or '#4A90D9' }}">
+                        <label class="form-label">Colour</label>
+                        <input type="hidden" name="colour" id="colourInput" value="{{ form.colour.data or '#4A90D9' }}">
+                        <div class="colour-bubbles">
+                            {% set colours = ['#4A90D9', '#22c55e', '#ef4444', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6', '#8b5cf6'] %}
+                            {% for c in colours %}
+                            <span class="colour-bubble" data-colour="{{ c }}" style="background-color: {{ c }};"></span>
+                            {% endfor %}
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="year_level" class="form-label">Year Level</label>
