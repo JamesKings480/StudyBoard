@@ -5,6 +5,9 @@ from datetime import date, timedelta
 from config import Config
 from models import db, User, Subject, Assessment, Task
 from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm
+import os
+from werkzeug.utils import secure_filename
+
 HSC_SUBJECTS = {
     'English Standard': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-standard-stage-6-2017',
     'English Advanced': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-advanced-stage-6-2017',
@@ -52,6 +55,11 @@ from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, Mark
 
 app = Flask(__name__)
 app.config.from_object(Config)
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc', 'txt'}
+MAX_FILE_SIZE = 5 * 1024 * 1024 
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 csrf = CSRFProtect(app)
 db.init_app(app)
@@ -274,12 +282,34 @@ def create_assessment(subject_id):
         return redirect(url_for('dashboard'))
     form = AssessmentForm()
     if form.validate_on_submit():
+        notification_text = form.task_notification.data.strip() if form.task_notification.data else ''
+
+        uploaded_file = request.files.get('task_file')
+        if uploaded_file and uploaded_file.filename:
+            if not allowed_file(uploaded_file.filename):
+                flash('Only PDF, Word and text files are allowed.', 'danger')
+                return render_template('assessment_form.html', form=form, subject=subject, title='New Assessment')
+            uploaded_file.seek(0, os.SEEK_END)
+            file_size = uploaded_file.tell()
+            uploaded_file.seek(0)
+            if file_size > MAX_FILE_SIZE:
+                flash('File is too large. Maximum size is 5MB.', 'danger')
+                return render_template('assessment_form.html', form=form, subject=subject, title='New Assessment')
+            filename = secure_filename(uploaded_file.filename)
+            notification_text = f'[Uploaded file: {filename}]'
+
         assessment = Assessment(
-            name=form.name.data.strip(), due_date=form.due_date.data, weighting=form.weighting.data, assessment_type=form.assessment_type.data, task_notification=form.task_notification.data.strip() if form.task_notification.data else '', subject_id=subject.id)
+            name=form.name.data.strip(),
+            due_date=form.due_date.data,
+            weighting=form.weighting.data,
+            assessment_type=form.assessment_type.data,
+            task_notification=notification_text,
+            subject_id=subject.id
+        )
         db.session.add(assessment)
         db.session.commit()
         flash(f'Assessment "{assessment.name}" created!', 'success')
-        return redirect(url_for('subject_detail', subject_id=subject.id))
+        return redirect(url_for('assessment_detail', assessment_id=assessment.id))
     return render_template('assessment_form.html', form=form, subject=subject, title='New Assessment')
 
 @app.route('/assessment/<int:assessment_id>')

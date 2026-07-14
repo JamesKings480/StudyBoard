@@ -42,9 +42,28 @@
                         {{ form.assessment_type(class="form-select", id="assessment_type") }}
                     </div>
                     <div class="mb-3">
-                        <label for="task_notification" class="form-label">Task Notification (optional)</label>
-                        {{ form.task_notification(class="form-control", rows="4", placeholder="Paste your assessment task notification here.", id="task_notification") }}
-                        <div class="form-text">Paste the assessment details here. This will be used later to generate study subtasks.</div>
+                        <label class="form-label">Task Notification</label>
+                        <div class="form-text mb-2">Add your assessment task by uploading a file or typing it below. This will be used to generate study subtasks.</div>
+
+                        <div id="dropZone" class="upload-drop-zone mb-2">
+                            <i class="bi bi-cloud-arrow-up fs-3 d-block mb-1"></i>
+                            <div class="small">Drag a file here, or choose a type below</div>
+                            <div class="d-flex gap-2 justify-content-center mt-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('pdfInput').click()">
+                                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('docInput').click()">
+                                    <i class="bi bi-file-earmark-word me-1"></i>Word
+                                </button>
+                            </div>
+                            <div id="fileNameDisplay" class="small text-success mt-2" style="display:none;"></div>
+                        </div>
+
+                        <input type="file" name="task_file" id="pdfInput" accept=".pdf" style="display:none;" onchange="showFileName(this)">
+                        <input type="file" name="task_file" id="docInput" accept=".doc,.docx" style="display:none;" onchange="showFileName(this)">
+
+                        <label for="task_notification" class="form-label small">Or type it here:</label>
+                        {{ form.task_notification(class="form-control", rows="4", placeholder="Type or paste your assessment task notification here.", id="task_notification") }}
                     </div>
                     <div class="d-flex gap-2">
                         {{ form.submit(class="btn btn-primary") }}

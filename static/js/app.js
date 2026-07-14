@@ -193,6 +193,7 @@ function toggleTimerButtons(state) {
         stopBtn.style.display = 'none';
     }
 }
+
 document.addEventListener('DOMContentLoaded', function () {
     var alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(function (alert) {
@@ -203,4 +204,40 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     setupConfirmDeleteForms();
     setupColourBubbles();
+    setupDropZone();
 });
+
+function showFileName(input) {
+    var display = document.getElementById('fileNameDisplay');
+    if (input.files && input.files.length > 0 && display) {
+        display.textContent = 'Selected: ' + input.files[0].name;
+        display.style.display = 'block';
+    }
+}
+
+function setupDropZone() {
+    var dropZone = document.getElementById('dropZone');
+    var pdfInput = document.getElementById('pdfInput');
+    if (!dropZone || !pdfInput) return;
+
+    ['dragenter', 'dragover'].forEach(function (evt) {
+        dropZone.addEventListener(evt, function (e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(function (evt) {
+        dropZone.addEventListener(evt, function (e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+    });
+
+    dropZone.addEventListener('drop', function (e) {
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            pdfInput.files = e.dataTransfer.files;
+            showFileName(pdfInput);
+        }
+    });
+}

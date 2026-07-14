@@ -522,3 +522,19 @@ body {
     background-color: var(--sb-sidebar-hover);
     color: #ffffff;
 }
+
+.upload-drop-zone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    color: #64748b;
+    background-color: #f8fafc;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.upload-drop-zone.dragover {
+    border-color: var(--sb-primary);
+    background-color: #eff6ff;
+    color: var(--sb-primary);
+}
