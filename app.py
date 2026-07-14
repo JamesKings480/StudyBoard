@@ -4,52 +4,47 @@ from flask_wtf.csrf import CSRFProtect
 from datetime import date, timedelta
 from config import Config
 from models import db, User, Subject, Assessment, Task
-from forms import RegistrationForm, LoginForm, SubjectForm
+from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm
 HSC_SUBJECTS = {
-    'English Studies': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/english-studies/',
-    'English EAL/D': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/english-eald/',
-    'English (Standard)': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/english-standard/',
-    'English (Advanced)': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/english-advanced/',
-    'English Extension 1': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/english-extension-courses/',
-    'English Extension 2': 'https://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/english-extension-2-year-12/',
-    'Mathematics Standard': 'https://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/mathematics-standard/',
-    'Mathematics Advanced': 'https://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/mathematics-advanced/',
-    'Mathematics Extension 1': 'https://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/mathematics-extension-1/',
-    'Mathematics Extension 2': 'https://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/mathematics-extension-2/',
-    'Drama': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/drama-2-unit/',
-    'Entertainment (VET)': 'https://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/vet-entertainment-course/',
-    'Business Services (VET)': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/business-services-vet/',
-    'Business Studies': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/business-studies/',
-    'Economics': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/economics/',
-    'Geography': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/geography/',
-    'Aboriginal Studies': 'https://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/aboriginal-studies/',
-    'Ancient History': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/ancient-history/',
-    'History Extension': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/history-extension/',
-    'Legal Studies': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/legal-studies/',
-    'Modern History': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/modern-history/',
-    'External Language Courses': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/languages-external-language-study/',
-    'French Continuers': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/french-continuers/',
-    'Chinese Continuers': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/chinese-continuers/',
-    'Latin Continuers': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/latin-continuers/',
-    'Modern Greek Beginners': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/modern-greek-beginners/',
-    'Music 1': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/music-1/',
-    'Music 2': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/music-2/',
-    'Music Extension': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/music-extension/',
-    'Health and Movement Science': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/personal-development-health-and-physical-education/',
-    'Studies of Religion I': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/studies-of-religion-i/',
-    'Studies of Religion II': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/studies-of-religion-ii/',
-    'Biology': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/biology/',
-    'Chemistry': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/chemistry/',
-    'Earth and Environmental Science': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/earth-and-environmental-science/',
-    'Physics': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/physics/',
-    'Science Extension': 'https://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/year-12-hsc-science-extension/',
-    'Construction (VET)': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/construction-vet/',
-    'Design and Technology': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/design-and-technology/',
-    'Engineering Studies': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/engineering-studies/',
-    'Hospitality (VET)': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/hospitality-vet/',
-    'Industrial Technology': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/industrial-technology/',
-    'Software Engineering': 'https://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/software-engineering/',
-    'Visual Arts': 'http://insites.newington.nsw.edu.au/academicguide-year11-12/hsc/hsc-subjects/visual-arts/',
+    'English Standard': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-standard-stage-6-2017',
+    'English Advanced': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-advanced-stage-6-2017',
+    'English Studies': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-studies-stage-6-2017',
+    'English EAL/D': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-eald-stage-6-2017',
+    'English Extension 1': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-extension-stage-6-2017',
+    'English Extension 2': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-extension-stage-6-2017',
+    'Mathematics Standard': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/mathematics/mathematics-standard-stage-6-2017',
+    'Mathematics Advanced': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/mathematics/mathematics-advanced-stage-6-2017',
+    'Mathematics Extension 1': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/mathematics/mathematics-extension-1-stage-6-2017',
+    'Mathematics Extension 2': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/mathematics/mathematics-extension-2-stage-6-2017',
+    'Drama': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/creative-arts/drama-stage-6-2009',
+    'Business Studies': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/business-studies-stage-6-2010',
+    'Economics': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/economics-stage-6-2009',
+    'Geography': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/geography-stage-6-2009',
+    'Aboriginal Studies': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/aboriginal-studies-stage-6-2010',
+    'Ancient History': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/ancient-history-stage-6-2017',
+    'Modern History': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/modern-history-stage-6-2017',
+    'History Extension': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/history-extension-stage-6-2017',
+    'Legal Studies': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/legal-studies-stage-6-2009',
+    'French Continuers': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/languages/french-stage-6-2009',
+    'Chinese Continuers': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/languages/chinese-stage-6-2009',
+    'Latin Continuers': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/languages/latin-stage-6-2010',
+    'Modern Greek Beginners': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/languages/modern-greek-stage-6-2009',
+    'Music 1': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/creative-arts/music-stage-6-2009',
+    'Music 2': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/creative-arts/music-stage-6-2009',
+    'Music Extension': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/creative-arts/music-extension-stage-6-2009',
+    'Health and Movement Science': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/pdhpe/health-and-movement-science-stage-6-2024',
+    'Studies of Religion I': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/studies-of-religion-stage-6-2009',
+    'Studies of Religion II': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/hsie/studies-of-religion-stage-6-2009',
+    'Biology': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/science/biology-stage-6-2017',
+    'Chemistry': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/science/chemistry-stage-6-2017',
+    'Earth and Environmental Science': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/science/earth-and-environmental-science-stage-6-2017',
+    'Physics': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/science/physics-stage-6-2017',
+    'Science Extension': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/science/science-extension-stage-6-2017',
+    'Design and Technology': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/tas/design-and-technology-stage-6-2018',
+    'Engineering Studies': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/tas/engineering-studies-stage-6-2022',
+    'Industrial Technology': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/tas/industrial-technology-stage-6-2019',
+    'Software Engineering': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/tas/software-engineering-11-12-2022',
+    'Visual Arts': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/creative-arts/visual-arts-stage-6-2016',
 }
 
 from models import db, User, Subject, Assessment, Task, StudySession
@@ -234,7 +229,8 @@ def subject_detail(subject_id):
     if subject.user_id != current_user.id:
         flash('Access denied.', 'danger')
         return redirect(url_for('dashboard'))
-    return render_template('subject_detail.html', subject=subject, today=date.today())
+    assessments = Assessment.query.filter_by(subject_id=subject.id).order_by(Assessment.due_date).all()
+    return render_template('subject_detail.html', subject=subject, assessments=assessments, today=date.today())
 
 @app.route('/subject/<int:subject_id>/edit', methods=['GET', 'POST'])
 @login_required

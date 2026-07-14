@@ -13,6 +13,11 @@
         <a href="{{ url_for('create_assessment', subject_id=subject.id) }}" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-circle me-1"></i>New Assessment
         </a>
+        {% if subject.nesa_url %}
+        <a href="{{ subject.nesa_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-box-arrow-up-right me-1"></i>NESA Syllabus
+        </a>
+        {% endif %}
         <a href="{{ url_for('edit_subject', subject_id=subject.id) }}" class="btn btn-outline-secondary btn-sm">Edit</a>
         <form method="POST" action="{{ url_for('delete_subject', subject_id=subject.id) }}"
               class="d-inline confirm-delete-form" data-confirm-msg="Delete this subject and all its data?">
@@ -21,12 +26,6 @@
         </form>
     </div>
 </div>
-
-{% if subject.nesa_url %}
-<a href="{{ subject.nesa_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-box-arrow-up-right me-1"></i>NESA Syllabus
-</a>
-{% endif %}
 
 <div class="card shadow-sm">
     <div class="card-header bg-white">

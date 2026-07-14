@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - Studyboard{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('subject_detail', subject_id=subject.id) }}">{{ subject.name }}</a></li>
+                <li class="breadcrumb-item active">{{ title }}</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold mb-4"><i class="bi bi-file-earmark-plus me-2"></i>{{ title }}</h2>
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Assessment Name</label>
+                        {{ form.name(class="form-control", placeholder="e.g. Economics Essay Task 1", id="name") }}
+                        {% for error in form.name.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="due_date" class="form-label">Due Date</label>
+                            {{ form.due_date(class="form-control", id="due_date") }}
+                            {% for error in form.due_date.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="weighting" class="form-label">Weighting (%)</label>
+                            {{ form.weighting(class="form-control", placeholder="e.g. 25", id="weighting") }}
+                            {% for error in form.weighting.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assessment_type" class="form-label">Type</label>
+                        {{ form.assessment_type(class="form-select", id="assessment_type") }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="task_notification" class="form-label">Task Notification (optional)</label>
+                        {{ form.task_notification(class="form-control", rows="4", placeholder="Paste your assessment task notification here.", id="task_notification") }}
+                        <div class="form-text">Paste the assessment details here. This will be used later to generate study subtasks.</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('subject_detail', subject_id=subject.id) }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
