@@ -65,7 +65,7 @@ class AssessmentForm(FlaskForm):
         ('Other', 'Other')
     ])
     task_notification = TextAreaField('Task Notification (optional)',
-                                     validators=[Length(max=2000)])
+                                     validators=[Length(max=20000)])
     submit = SubmitField('Save Assessment')
 
     def validate_due_date(self, field):

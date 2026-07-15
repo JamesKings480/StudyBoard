@@ -207,18 +207,55 @@ document.addEventListener('DOMContentLoaded', function () {
     setupDropZone();
 });
 
+function pickFile(acceptTypes) {
+    var input = document.getElementById('taskFileInput');
+    if (!input) return;
+    input.setAttribute('accept', acceptTypes);
+    input.click();
+}
+
 function showFileName(input) {
     var display = document.getElementById('fileNameDisplay');
-    if (input.files && input.files.length > 0 && display) {
-        display.textContent = 'Selected: ' + input.files[0].name;
-        display.style.display = 'block';
+    if (!display) return;
+    if (!input.files || input.files.length === 0) {
+        clearFile();
+        return;
     }
+
+    var file = input.files[0];
+    var sizeKB = file.size / 1024;
+    var sizeText = sizeKB > 1024 ? (sizeKB / 1024).toFixed(1) + ' MB' : Math.round(sizeKB) + ' KB';
+    var lowerName = file.name.toLowerCase();
+    var icon = 'bi-file-earmark-text';
+    if (lowerName.endsWith('.pdf')) icon = 'bi-file-earmark-pdf';
+    else if (lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) icon = 'bi-file-earmark-word';
+
+    display.innerHTML =
+        '<div class="file-preview-card">' +
+            '<i class="bi ' + icon + ' file-preview-icon"></i>' +
+            '<div class="file-preview-info">' +
+                '<div class="file-preview-name"></div>' +
+                '<div class="file-preview-size">' + sizeText + '</div>' +
+            '</div>' +
+            '<button type="button" class="file-preview-remove" onclick="clearFile()">&times;</button>' +
+        '</div>';
+    display.querySelector('.file-preview-name').textContent = file.name;
+    display.style.display = 'block';
+}
+
+function clearFile() {
+    var input = document.getElementById('taskFileInput');
+    if (input) input.value = '';
+    var display = document.getElementById('fileNameDisplay');
+    if (!display) return;
+    display.style.display = 'none';
+    display.innerHTML = '';
 }
 
 function setupDropZone() {
     var dropZone = document.getElementById('dropZone');
-    var pdfInput = document.getElementById('pdfInput');
-    if (!dropZone || !pdfInput) return;
+    var fileInput = document.getElementById('taskFileInput');
+    if (!dropZone || !fileInput) return;
 
     ['dragenter', 'dragover'].forEach(function (evt) {
         dropZone.addEventListener(evt, function (e) {
@@ -236,8 +273,8 @@ function setupDropZone() {
 
     dropZone.addEventListener('drop', function (e) {
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            pdfInput.files = e.dataTransfer.files;
-            showFileName(pdfInput);
+            fileInput.files = e.dataTransfer.files;
+            showFileName(fileInput);
         }
     });
 }

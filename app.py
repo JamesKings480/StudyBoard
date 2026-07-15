@@ -5,7 +5,10 @@ from datetime import date, timedelta
 from config import Config
 from models import db, User, Subject, Assessment, Task
 from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm
+import io
 import os
+import pdfplumber
+from docx import Document as DocxDocument
 from werkzeug.utils import secure_filename
 
 HSC_SUBJECTS = {
@@ -55,11 +58,67 @@ from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, Mark
 
 app = Flask(__name__)
 app.config.from_object(Config)
-ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc', 'txt'}
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
+MAX_NOTIFICATION_CHARS = 20000
 MAX_FILE_SIZE = 5 * 1024 * 1024 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extract_text_from_file(uploaded_file, filename):
+    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    text = ''
+    try:
+        uploaded_file.seek(0)
+        file_bytes = io.BytesIO(uploaded_file.read())
+        if ext == 'pdf':
+            with pdfplumber.open(file_bytes) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + '\n'
+        elif ext == 'docx':
+            document = DocxDocument(file_bytes)
+            for para in document.paragraphs:
+                text += para.text + '\n'
+            for table in document.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            text += cell.text.strip() + '\n'
+        elif ext == 'txt':
+            text = file_bytes.read().decode('utf-8', errors='ignore')
+    except Exception as error:
+        print('EXTRACTION ERROR [' + ext + ']:', error)
+        return ''
+    return text.strip()
+
+
+def get_notification_text(form):
+    typed_text = form.task_notification.data.strip() if form.task_notification.data else ''
+
+    uploaded_file = request.files.get('task_file')
+    if not uploaded_file or not uploaded_file.filename:
+        return typed_text, None
+
+    if uploaded_file.filename.lower().endswith('.doc'):
+        return typed_text, 'Old .doc files cannot be read. Open it in Word, save it as .docx, then upload again.'
+
+    if not allowed_file(uploaded_file.filename):
+        return typed_text, 'Only PDF, Word (.docx) and text files are allowed.'
+
+    uploaded_file.seek(0, os.SEEK_END)
+    file_size = uploaded_file.tell()
+    uploaded_file.seek(0)
+    if file_size > MAX_FILE_SIZE:
+        return typed_text, 'File is too large. Maximum size is 5MB.'
+
+    filename = secure_filename(uploaded_file.filename)
+    extracted = extract_text_from_file(uploaded_file, filename)
+    if not extracted:
+        return typed_text, 'Could not read any text from that file. It may be a scan rather than real text. Try another file or type the task in.'
+
+    return extracted[:MAX_NOTIFICATION_CHARS], None
 
 csrf = CSRFProtect(app)
 db.init_app(app)
@@ -282,21 +341,10 @@ def create_assessment(subject_id):
         return redirect(url_for('dashboard'))
     form = AssessmentForm()
     if form.validate_on_submit():
-        notification_text = form.task_notification.data.strip() if form.task_notification.data else ''
-
-        uploaded_file = request.files.get('task_file')
-        if uploaded_file and uploaded_file.filename:
-            if not allowed_file(uploaded_file.filename):
-                flash('Only PDF, Word and text files are allowed.', 'danger')
-                return render_template('assessment_form.html', form=form, subject=subject, title='New Assessment')
-            uploaded_file.seek(0, os.SEEK_END)
-            file_size = uploaded_file.tell()
-            uploaded_file.seek(0)
-            if file_size > MAX_FILE_SIZE:
-                flash('File is too large. Maximum size is 5MB.', 'danger')
-                return render_template('assessment_form.html', form=form, subject=subject, title='New Assessment')
-            filename = secure_filename(uploaded_file.filename)
-            notification_text = f'[Uploaded file: {filename}]'
+        notification_text, upload_error = get_notification_text(form)
+        if upload_error:
+            flash(upload_error, 'danger')
+            return render_template('assessment_form.html', form=form, subject=subject, title='New Assessment')
 
         assessment = Assessment(
             name=form.name.data.strip(),
@@ -334,11 +382,16 @@ def edit_assessment(assessment_id):
         return redirect(url_for('dashboard'))
     form = AssessmentForm(obj=assessment)
     if form.validate_on_submit():
+        notification_text, upload_error = get_notification_text(form)
+        if upload_error:
+            flash(upload_error, 'danger')
+            return render_template('assessment_form.html', form=form, subject=subject, title='Edit Assessment')
+
         assessment.name = form.name.data.strip()
         assessment.due_date = form.due_date.data
         assessment.weighting = form.weighting.data
         assessment.assessment_type = form.assessment_type.data
-        assessment.task_notification = form.task_notification.data.strip() if form.task_notification.data else ''
+        assessment.task_notification = notification_text
         db.session.commit()
         flash(f'Assessment "{assessment.name}" updated!', 'success')
         return redirect(url_for('assessment_detail', assessment_id=assessment.id))
