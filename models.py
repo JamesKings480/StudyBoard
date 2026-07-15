@@ -43,9 +43,32 @@ class Assessment(db.Model):
     status = db.Column(db.String(20), nullable=False, default='Upcoming')
     mark = db.Column(db.Float, nullable=True)
     task_notification = db.Column(db.Text, nullable=True)
+    task_file_name = db.Column(db.String(255), nullable=True)
+    task_file_size = db.Column(db.Integer, nullable=True)
+    task_file_data = db.Column(db.LargeBinary, nullable=True)
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     tasks = db.relationship('Task', backref='assessment', lazy=True, cascade='all, delete-orphan')
+
+    @property
+    def task_file_icon(self):
+        if not self.task_file_name:
+            return ''
+        ext = self.task_file_name.rsplit('.', 1)[-1].lower()
+        if ext == 'pdf':
+            return 'bi-file-earmark-pdf'
+        if ext == 'docx':
+            return 'bi-file-earmark-word'
+        return 'bi-file-earmark-text'
+
+    @property
+    def task_file_size_text(self):
+        if not self.task_file_size:
+            return ''
+        kb = self.task_file_size / 1024
+        if kb > 1024:
+            return str(round(kb / 1024, 1)) + ' MB'
+        return str(round(kb)) + ' KB'
 
 class Task(db.Model):
     __tablename__ = 'tasks'
