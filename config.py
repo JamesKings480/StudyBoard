@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -12,3 +15,4 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = False
+    GROQ_API_KEY = os.environ.get('GROQ_API_KEY')

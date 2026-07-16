@@ -193,6 +193,7 @@ function toggleTimerButtons(state) {
         stopBtn.style.display = 'none';
     }
 }
+
 document.addEventListener('DOMContentLoaded', function () {
     var alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(function (alert) {
@@ -203,4 +204,97 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     setupConfirmDeleteForms();
     setupColourBubbles();
+    setupDropZone();
 });
+
+function pickFile(acceptTypes) {
+    var input = document.getElementById('taskFileInput');
+    if (!input) return;
+    input.setAttribute('accept', acceptTypes);
+    input.click();
+}
+
+function showFileName(input) {
+    var display = document.getElementById('fileNameDisplay');
+    if (!display) return;
+    if (!input.files || input.files.length === 0) {
+        clearFile();
+        return;
+    }
+
+    var existing = document.getElementById('existingFileCard');
+    if (existing) existing.style.display = 'none';
+
+    var file = input.files[0];
+    var sizeKB = file.size / 1024;
+    var sizeText = sizeKB > 1024 ? (sizeKB / 1024).toFixed(1) + ' MB' : Math.round(sizeKB) + ' KB';
+    var lowerName = file.name.toLowerCase();
+    var icon = 'bi-file-earmark-text';
+    if (lowerName.endsWith('.pdf')) icon = 'bi-file-earmark-pdf';
+    else if (lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) icon = 'bi-file-earmark-word';
+
+    display.innerHTML =
+        '<div class="file-preview-card">' +
+            '<i class="bi ' + icon + ' file-preview-icon"></i>' +
+            '<div class="file-preview-info">' +
+                '<div class="file-preview-name"></div>' +
+                '<div class="file-preview-size">' + sizeText + '</div>' +
+            '</div>' +
+            '<button type="button" class="file-preview-remove" onclick="clearFile()">&times;</button>' +
+        '</div>';
+    display.querySelector('.file-preview-name').textContent = file.name;
+    display.style.display = 'block';
+}
+
+function removeExistingFile() {
+    var card = document.getElementById('existingFileCard');
+    var flag = document.getElementById('removeTaskFile');
+    if (flag) flag.value = '1';
+    if (card) card.style.display = 'none';
+}
+
+function clearFile() {
+    var input = document.getElementById('taskFileInput');
+    if (input) input.value = '';
+    var display = document.getElementById('fileNameDisplay');
+    if (!display) return;
+    display.style.display = 'none';
+    display.innerHTML = '';
+}
+
+function setupDropZone() {
+    var dropZone = document.getElementById('dropZone');
+    var fileInput = document.getElementById('taskFileInput');
+    if (!dropZone || !fileInput) return;
+
+    ['dragenter', 'dragover'].forEach(function (evt) {
+        dropZone.addEventListener(evt, function (e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(function (evt) {
+        dropZone.addEventListener(evt, function (e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+    });
+
+    dropZone.addEventListener('drop', function (e) {
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            showFileName(fileInput);
+        }
+    });
+}
+
+function toggleSubtask(btn, taskId) {
+    var detail = document.getElementById('subtaskDetail' + taskId);
+    if (!detail) return;
+    var isOpen = detail.style.display !== 'none';
+    detail.style.display = isOpen ? 'none' : 'block';
+    btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+    btn.setAttribute('title', isOpen ? 'Show details' : 'Hide details');
+    btn.querySelector('i').className = isOpen ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+}

@@ -43,17 +43,29 @@
                             {{ loop.index }}
                             {% endif %}
                         </div>
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="task-title {% if is_complete %}done{% endif %}">{{ t.title }}</div>
-                                <div class="task-meta">Due {{ t.scheduled_date.strftime('%b %d') }}</div>
+                        <div class="subtask-box {% if is_complete %}done{% endif %}">
+                            <div class="subtask-head">
+                                <div class="subtask-main">
+                                    <div class="task-title {% if is_complete %}done{% endif %}">{{ t.title }}</div>
+                                    <div class="task-meta">{{ t.scheduled_date.strftime('%a %d %b') }}</div>
+                                </div>
+                                <div class="subtask-actions">
+                                    {% if t.description %}
+                                    <button type="button" class="subtask-btn" onclick="toggleSubtask(this, {{ t.id }})" aria-expanded="false" title="Show details">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                    {% endif %}
+                                    <form method="POST" action="{{ url_for('toggle_task', task_id=t.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="subtask-btn" title="{% if is_complete %}Mark as not done{% else %}Mark as done{% endif %}">
+                                            <i class="bi bi-{% if is_complete %}arrow-counterclockwise{% else %}check{% endif %}"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
-                            <form method="POST" action="{{ url_for('toggle_task', task_id=t.id) }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-outline-secondary" style="padding: 0.1rem 0.3rem; font-size: 0.7rem;">
-                                    <i class="bi bi-{% if is_complete %}arrow-counterclockwise{% else %}check{% endif %}"></i>
-                                </button>
-                            </form>
+                            {% if t.description %}
+                            <div class="subtask-detail" id="subtaskDetail{{ t.id }}" style="display:none;">{{ t.description }}</div>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -100,7 +112,20 @@
                 {% if assessment.mark is not none %}
                 <small class="text-muted mt-2 d-block">Recorded mark: <strong>{{ assessment.mark }}%</strong></small>
                 {% endif %}
-                {% if assessment.task_notification %}
+                {% if assessment.task_file_name %}
+                <hr>
+                <h6 class="fw-bold small">Task Notification</h6>
+                <a href="{{ url_for('assessment_file', assessment_id=assessment.id) }}"
+                   target="_blank" rel="noopener"
+                   class="file-preview-card text-decoration-none">
+                    <i class="bi {{ assessment.task_file_icon }} file-preview-icon"></i>
+                    <div class="file-preview-info">
+                        <div class="file-preview-name">{{ assessment.task_file_name }}</div>
+                        <div class="file-preview-size">{{ assessment.task_file_size_text }}</div>
+                    </div>
+                    <i class="bi bi-box-arrow-up-right file-preview-open"></i>
+                </a>
+                {% elif assessment.task_notification %}
                 <hr>
                 <h6 class="fw-bold small">Task Notification</h6>
                 <p class="small text-muted" style="white-space: pre-wrap;">{{ assessment.task_notification }}</p>

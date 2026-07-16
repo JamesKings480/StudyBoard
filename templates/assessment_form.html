@@ -12,7 +12,7 @@
         <h2 class="fw-bold mb-4"><i class="bi bi-file-earmark-plus me-2"></i>{{ title }}</h2>
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <form method="POST" novalidate>
+                <form method="POST" enctype="multipart/form-data" novalidate>
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
                         <label for="name" class="form-label">Assessment Name</label>
@@ -42,9 +42,41 @@
                         {{ form.assessment_type(class="form-select", id="assessment_type") }}
                     </div>
                     <div class="mb-3">
-                        <label for="task_notification" class="form-label">Task Notification (optional)</label>
-                        {{ form.task_notification(class="form-control", rows="4", placeholder="Paste your assessment task notification here.", id="task_notification") }}
-                        <div class="form-text">Paste the assessment details here. This will be used later to generate study subtasks.</div>
+                        <label class="form-label">Task Notification</label>
+                        <div class="form-text mb-2">Add your assessment task by uploading a file or typing it below. This will be used to generate study subtasks.</div>
+
+                        <div id="dropZone" class="upload-drop-zone mb-2">
+                            <i class="bi bi-cloud-arrow-up fs-3 d-block mb-1"></i>
+                            <div class="small">Drag a file here, or choose a type below</div>
+                            <div class="d-flex gap-2 justify-content-center mt-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="pickFile('.pdf')">
+                                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="pickFile('.docx')">
+                                    <i class="bi bi-file-earmark-word me-1"></i>Word
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="pickFile('.txt')">
+                                    <i class="bi bi-file-earmark-text me-1"></i>Text
+                                </button>
+                            </div>
+                            <div id="fileNameDisplay" class="mt-2" style="display:none;"></div>
+                        </div>
+
+                        <input type="file" name="task_file" id="taskFileInput" accept=".pdf,.docx,.txt" style="display:none;" onchange="showFileName(this)">
+
+                        {% if assessment and assessment.task_file_name %}
+                        <div id="existingFileCard" class="file-preview-card">
+                            <i class="bi {{ assessment.task_file_icon }} file-preview-icon"></i>
+                            <div class="file-preview-info">
+                                <div class="file-preview-name">{{ assessment.task_file_name }}</div>
+                                <div class="file-preview-size">{{ assessment.task_file_size_text }} already attached</div>
+                            </div>
+                            <button type="button" class="file-preview-remove" onclick="removeExistingFile()">&times;</button>
+                        </div>
+                        <input type="hidden" name="remove_task_file" id="removeTaskFile" value="">
+                        {% endif %}
+                        <label for="task_notification" class="form-label small">Or type it here:</label>
+                        {{ form.task_notification(class="form-control", rows="4", placeholder="Type or paste your assessment task notification here.", id="task_notification") }}
                     </div>
                     <div class="d-flex gap-2">
                         {{ form.submit(class="btn btn-primary") }}

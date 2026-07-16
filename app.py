@@ -1,10 +1,17 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 from datetime import date, timedelta
 from config import Config
 from models import db, User, Subject, Assessment, Task
 from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm
+import io
+import os
+import pdfplumber
+from docx import Document as DocxDocument
+from werkzeug.utils import secure_filename
+from groq_client import generate_subtasks
+
 HSC_SUBJECTS = {
     'English Standard': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-standard-stage-6-2017',
     'English Advanced': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-advanced-stage-6-2017',
@@ -52,6 +59,156 @@ from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, Mark
 
 app = Flask(__name__)
 app.config.from_object(Config)
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
+MAX_NOTIFICATION_CHARS = 20000
+FILE_MIMETYPES = {
+    'pdf': 'application/pdf',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'txt': 'text/plain',
+}
+OPEN_IN_BROWSER = {'pdf', 'txt'}
+MAX_FILE_SIZE = 5 * 1024 * 1024 
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extract_text_from_file(uploaded_file, filename):
+    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    text = ''
+    try:
+        uploaded_file.seek(0)
+        file_bytes = io.BytesIO(uploaded_file.read())
+        if ext == 'pdf':
+            with pdfplumber.open(file_bytes) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + '\n'
+        elif ext == 'docx':
+            document = DocxDocument(file_bytes)
+            for para in document.paragraphs:
+                text += para.text + '\n'
+            for table in document.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            text += cell.text.strip() + '\n'
+        elif ext == 'txt':
+            text = file_bytes.read().decode('utf-8', errors='ignore')
+    except Exception as error:
+        print('EXTRACTION ERROR [' + ext + ']:', error)
+        return ''
+    return text.strip()
+
+
+def get_notification_text(form):
+    typed_text = form.task_notification.data.strip() if form.task_notification.data else ''
+
+    uploaded_file = request.files.get('task_file')
+    if not uploaded_file or not uploaded_file.filename:
+        return typed_text, None, None
+
+    original_name = uploaded_file.filename
+    if original_name.lower().endswith('.doc'):
+        return typed_text, None, 'Old .doc files cannot be read. Open it in Word, save it as .docx, then upload again.'
+
+    if not allowed_file(original_name):
+        return typed_text, None, 'Only PDF, Word (.docx) and text files are allowed.'
+
+    uploaded_file.seek(0, os.SEEK_END)
+    file_size = uploaded_file.tell()
+    uploaded_file.seek(0)
+    if file_size > MAX_FILE_SIZE:
+        return typed_text, None, 'File is too large. Maximum size is 5MB.'
+
+    filename = secure_filename(original_name)
+    if '.' not in filename:
+        filename = 'task_file.' + original_name.rsplit('.', 1)[1].lower()
+
+    file_data = uploaded_file.read()
+    extracted = extract_text_from_file(uploaded_file, filename)
+    if not extracted:
+        return typed_text, None, 'Could not read any text from that file. It may be a scan rather than real text. Try another file or type the task in.'
+
+    file_info = {'name': filename, 'size': file_size, 'data': file_data}
+    return extracted[:MAX_NOTIFICATION_CHARS], file_info, None
+
+FALLBACK_STEPS = {
+    'Essay': [
+        'Read the task notification and marking criteria',
+        'Research and gather your sources',
+        'Plan the structure and write your thesis',
+        'Write the first draft',
+        'Edit, proofread and check the referencing',
+    ],
+    'Exam': [
+        'Collect all your notes and past papers',
+        'Summarise each topic onto one page',
+        'Practise questions under timed conditions',
+        'Review everything you got wrong',
+        'Final revision of your weakest topics',
+    ],
+    'Research Task': [
+        'Read the task notification and marking criteria',
+        'Find and record your sources',
+        'Take notes and gather your evidence',
+        'Write the draft',
+        'Proofread and finish the bibliography',
+    ],
+    'Practical': [
+        'Read the task notification and safety requirements',
+        'Plan the method and gather materials',
+        'Carry out the practical and record results',
+        'Analyse your results',
+        'Write up the report',
+    ],
+    'Presentation': [
+        'Read the task notification and marking criteria',
+        'Research the content',
+        'Build the slides or visuals',
+        'Rehearse out loud and time yourself',
+        'Final rehearsal and fix the timing',
+    ],
+    'Assignment': [
+        'Read the task notification and marking criteria',
+        'Break the task into its required parts',
+        'Do the research or the working',
+        'Write or build the draft',
+        'Check against the marking criteria and submit',
+    ],
+    'Other': [
+        'Read the task notification and marking criteria',
+        'Plan what needs doing',
+        'Do the main body of the work',
+        'Review against the marking criteria',
+        'Final check and submit',
+    ],
+}
+
+
+def build_fallback_subtasks(assessment_type, days_available):
+    steps = FALLBACK_STEPS.get(assessment_type, FALLBACK_STEPS['Other'])
+    subtasks = []
+    for index, title in enumerate(steps):
+        fraction = (len(steps) - index - 1) / len(steps)
+        subtasks.append({'title': title, 'days_before_due': int(days_available * fraction)})
+    return subtasks
+
+
+def save_subtasks(assessment, subtasks):
+    today = date.today()
+    for item in subtasks:
+        task_date = assessment.due_date - timedelta(days=item['days_before_due'])
+        if task_date < today:
+            task_date = today
+        task = Task(
+            title=item['title'],
+            description=item.get('description') or None,
+            scheduled_date=task_date,
+            assessment_id=assessment.id
+        )
+        db.session.add(task)
+    db.session.commit()
 
 csrf = CSRFProtect(app)
 db.init_app(app)
@@ -274,13 +431,36 @@ def create_assessment(subject_id):
         return redirect(url_for('dashboard'))
     form = AssessmentForm()
     if form.validate_on_submit():
+        notification_text, file_info, upload_error = get_notification_text(form)
+        if upload_error:
+            flash(upload_error, 'danger')
+            return render_template('assessment_form.html', form=form, subject=subject, assessment=None, title='New Assessment')
+
         assessment = Assessment(
-            name=form.name.data.strip(), due_date=form.due_date.data, weighting=form.weighting.data, assessment_type=form.assessment_type.data, task_notification=form.task_notification.data.strip() if form.task_notification.data else '', subject_id=subject.id)
+            name=form.name.data.strip(),
+            due_date=form.due_date.data,
+            weighting=form.weighting.data,
+            assessment_type=form.assessment_type.data,
+            task_notification=notification_text,
+            subject_id=subject.id
+        )
+        if file_info:
+            assessment.task_file_name = file_info['name']
+            assessment.task_file_size = file_info['size']
+            assessment.task_file_data = file_info['data']
         db.session.add(assessment)
         db.session.commit()
-        flash(f'Assessment "{assessment.name}" created!', 'success')
-        return redirect(url_for('subject_detail', subject_id=subject.id))
-    return render_template('assessment_form.html', form=form, subject=subject, title='New Assessment')
+
+        days_available = (assessment.due_date - date.today()).days
+        subtasks = generate_subtasks(assessment.assessment_type, days_available, assessment.task_notification)
+        if subtasks:
+            save_subtasks(assessment, subtasks)
+            flash(f'Assessment "{assessment.name}" created with an AI study plan!', 'success')
+        else:
+            save_subtasks(assessment, build_fallback_subtasks(assessment.assessment_type, days_available))
+            flash(f'Assessment "{assessment.name}" created, but the AI plan was not available so I have used a standard {assessment.assessment_type.lower()} plan. You can edit the subtasks below.', 'warning')
+        return redirect(url_for('assessment_detail', assessment_id=assessment.id))
+    return render_template('assessment_form.html', form=form, subject=subject, assessment=None, title='New Assessment')
 
 @app.route('/assessment/<int:assessment_id>')
 @login_required
@@ -303,16 +483,57 @@ def edit_assessment(assessment_id):
         flash('Access denied.', 'danger')
         return redirect(url_for('dashboard'))
     form = AssessmentForm(obj=assessment)
+    if request.method == 'GET' and assessment.task_file_name:
+        form.task_notification.data = ''
+
     if form.validate_on_submit():
+        notification_text, file_info, upload_error = get_notification_text(form)
+        if upload_error:
+            flash(upload_error, 'danger')
+            return render_template('assessment_form.html', form=form, subject=subject, assessment=assessment, title='Edit Assessment')
+
         assessment.name = form.name.data.strip()
         assessment.due_date = form.due_date.data
         assessment.weighting = form.weighting.data
         assessment.assessment_type = form.assessment_type.data
-        assessment.task_notification = form.task_notification.data.strip() if form.task_notification.data else ''
+
+        if file_info:
+            assessment.task_notification = notification_text
+            assessment.task_file_name = file_info['name']
+            assessment.task_file_size = file_info['size']
+            assessment.task_file_data = file_info['data']
+        elif request.form.get('remove_task_file') == '1':
+            assessment.task_notification = notification_text
+            assessment.task_file_name = None
+            assessment.task_file_size = None
+            assessment.task_file_data = None
+        elif not assessment.task_file_name:
+            assessment.task_notification = notification_text
+
         db.session.commit()
         flash(f'Assessment "{assessment.name}" updated!', 'success')
         return redirect(url_for('assessment_detail', assessment_id=assessment.id))
-    return render_template('assessment_form.html', form=form, subject=subject, title='Edit Assessment')
+    return render_template('assessment_form.html', form=form, subject=subject, assessment=assessment, title='Edit Assessment')
+
+
+@app.route('/assessment/<int:assessment_id>/file')
+@login_required
+def assessment_file(assessment_id):
+    assessment = Assessment.query.get_or_404(assessment_id)
+    if assessment.subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    if not assessment.task_file_data:
+        flash('There is no file attached to that assessment.', 'warning')
+        return redirect(url_for('assessment_detail', assessment_id=assessment.id))
+
+    ext = assessment.task_file_name.rsplit('.', 1)[-1].lower()
+    return send_file(
+        io.BytesIO(assessment.task_file_data),
+        mimetype=FILE_MIMETYPES.get(ext, 'application/octet-stream'),
+        as_attachment=ext not in OPEN_IN_BROWSER,
+        download_name=assessment.task_file_name
+    )
 
 
 @app.route('/assessment/<int:assessment_id>/delete', methods=['POST'])
