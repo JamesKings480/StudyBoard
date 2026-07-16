@@ -304,8 +304,17 @@ def dashboard():
     todays_tasks = Task.query.join(Assessment).join(Subject).filter(
         Subject.user_id == current_user.id,
         Task.scheduled_date <= today,
-        Task.status == 'Incomplete'
-    ).order_by(Task.scheduled_date).all()
+        db.or_(Task.status == 'Incomplete', Task.scheduled_date == today)
+    ).all()
+    todays_todos = TodoItem.query.join(Subject).filter(
+        Subject.user_id == current_user.id,
+        TodoItem.scheduled_date <= today,
+        db.or_(TodoItem.status == 'Incomplete', TodoItem.scheduled_date == today)
+    ).all()
+    todays_items = sorted(
+        todays_tasks + todays_todos,
+        key=lambda item: (item.status == 'Complete', item.scheduled_date)
+    )
 
     sessions = StudySession.query.filter(
         StudySession.user_id == current_user.id,
@@ -331,7 +340,7 @@ def dashboard():
     todo_form.subject_id.choices = [(s.id, s.name) for s in subjects]
     todo_form.scheduled_date.data = today
     day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return render_template('dashboard.html', subjects=subjects, upcoming_assessments=upcoming_assessments, todays_tasks=todays_tasks, todo_form=todo_form, total_weekly_minutes=total_weekly_minutes, weekly_display=weekly_display, daily_totals=daily_totals, max_daily=max_daily, day_names=day_names, today=today)
+    return render_template('dashboard.html', subjects=subjects, upcoming_assessments=upcoming_assessments, todays_items=todays_items, todo_form=todo_form, total_weekly_minutes=total_weekly_minutes, weekly_display=weekly_display, daily_totals=daily_totals, max_daily=max_daily, day_names=day_names, today=today)
 
 @app.route('/study/save', methods=['POST'])
 @login_required
