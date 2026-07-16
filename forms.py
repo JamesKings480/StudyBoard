@@ -92,6 +92,25 @@ class TaskForm(FlaskForm):
     submit = SubmitField('Add Task')
 
 
+class FlashcardForm(FlaskForm):
+    subject_id = SelectField('Subject', coerce=int, validators=[
+        DataRequired(message='Pick a subject')
+    ])
+    topic_name = StringField('Topic', validators=[
+        DataRequired(message='Give your card a topic, for example Photosynthesis'),
+        Length(max=100)
+    ])
+    question = TextAreaField('Question', validators=[
+        DataRequired(message='The question cannot be blank'),
+        Length(max=1000)
+    ])
+    answer = TextAreaField('Answer', validators=[
+        DataRequired(message='The answer cannot be blank'),
+        Length(max=1000)
+    ])
+    submit = SubmitField('Save flashcard')
+
+
 class TodoItemForm(FlaskForm):
     title = StringField('To-do', validators=[
         DataRequired(message='Give your to-do a title'),
