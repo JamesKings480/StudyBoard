@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Flashcards - Studyboard{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0"><i class="bi bi-card-text me-2"></i>Flashcards</h3>
+    <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse"
+            data-bs-target="#addCardForm" aria-expanded="false" aria-controls="addCardForm">
+        <i class="bi bi-plus-circle me-1"></i>New Flashcard
+    </button>
+</div>
+
+<div class="collapse mb-3" id="addCardForm">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if subjects %}
+            <form method="POST" action="{{ url_for('create_flashcard') }}">
+                {{ form.hidden_tag() }}
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                        <label class="form-label small mb-1">Subject</label>
+                        {{ form.subject_id(class="form-select form-select-sm") }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small mb-1">Topic</label>
+                        {{ form.topic_name(class="form-control form-control-sm", placeholder="e.g. Photosynthesis", list="topicOptions", autocomplete="off") }}
+                        <datalist id="topicOptions">
+                            {% for t in topics %}
+                            <option value="{{ t.name }}"></option>
+                            {% endfor %}
+                        </datalist>
+                        <div class="form-text">Type a new topic or pick an existing one.</div>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small mb-1">Question</label>
+                    {{ form.question(class="form-control form-control-sm", rows="2", placeholder="What are the reactants of photosynthesis?") }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small mb-1">Answer</label>
+                    {{ form.answer(class="form-control form-control-sm", rows="2", placeholder="Carbon dioxide and water, using light energy") }}
+                </div>
+                {{ form.submit(class="btn btn-primary btn-sm") }}
+            </form>
+            {% else %}
+            <p class="text-muted small mb-0">Add a subject first</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% block topic_lists %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white">
+        <h6 class="mb-0 fw-bold">Your Topics</h6>
+    </div>
+    <div class="card-body p-0">
+        {% if topics %}
+        <div class="list-group list-group-flush">
+            {% for t in topics %}
+            <a href="{{ url_for('topic_review', topic_id=t.id) }}" class="list-group-item list-group-item-action py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold">{{ t.name }}</div>
+                        <small class="text-muted">
+                            <span class="subject-dot me-1" style="background-color: {{ t.subject.colour }}; width: 8px; height: 8px;"></span>
+                            {{ t.subject.name }}
+                        </small>
+                    </div>
+                    <span class="badge bg-secondary">{{ t.flashcards|length }} cards</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-card-text fs-1 d-block mb-2"></i>
+            No flashcards yet. Make your first one above.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% endblock %}
