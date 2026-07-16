@@ -7,7 +7,7 @@
             <span class="subject-dot me-2" style="background-color: {{ subject.colour }};"></span>
             {{ subject.name }}
         </h3>
-        <small class="text-muted">{{ subject.year_level }} | {{ subject.assessments|length }} assessments</small>
+        <small class="text-muted">{{ subject.year_level }} | {{ subject.assessments|length }} assessments | {{ subject.files|length }} files</small>
     </div>
     <div class="d-flex gap-2">
         <a href="{{ url_for('create_assessment', subject_id=subject.id) }}" class="btn btn-primary btn-sm">
@@ -27,30 +27,84 @@
     </div>
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-header bg-white">
-        <h6 class="mb-0 fw-bold">Assessments</h6>
-    </div>
-    <div class="card-body p-0">
-        {% if subject.assessments %}
-        <div class="list-group list-group-flush">
-            {% for a in subject.assessments %}
-            <a href="{{ url_for('assessment_detail', assessment_id=a.id) }}" class="list-group-item list-group-item-action py-2">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <div class="fw-semibold">{{ a.name }}</div>
-                        <small class="text-muted">{{ a.assessment_type }} | {{ a.weighting }}% | Due {{ a.due_date.strftime('%b %d, %Y') }}</small>
-                    </div>
-                    <span class="badge {% if a.status == 'Completed' %}bg-success{% elif a.status == 'In Progress' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                        {{ a.status }}
-                    </span>
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Assessments</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if subject.assessments %}
+                <div class="list-group list-group-flush">
+                    {% for a in subject.assessments %}
+                    <a href="{{ url_for('assessment_detail', assessment_id=a.id) }}" class="list-group-item list-group-item-action py-2">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="fw-semibold">{{ a.name }}</div>
+                                <small class="text-muted">{{ a.assessment_type }} | {{ a.weighting }}% | Due {{ a.due_date.strftime('%b %d, %Y') }}</small>
+                            </div>
+                            <span class="badge {% if a.status == 'Completed' %}bg-success{% elif a.status == 'In Progress' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                {{ a.status }}
+                            </span>
+                        </div>
+                    </a>
+                    {% endfor %}
                 </div>
-            </a>
-            {% endfor %}
+                {% else %}
+                <div class="text-center text-muted py-4">No assessments yet. Add one to get started.</div>
+                {% endif %}
+            </div>
         </div>
-        {% else %}
-        <div class="text-center text-muted py-4">No assessments yet. Add one to get started.</div>
-        {% endif %}
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold">Notes and Files</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('upload_subject_file', subject_id=subject.id) }}"
+                      enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="input-group input-group-sm">
+                        <input type="file" name="subject_file" class="form-control"
+                               accept=".pdf,.docx,.doc,.pptx,.txt,.png,.jpg,.jpeg" required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-1"></i>Upload
+                        </button>
+                    </div>
+                    <div class="form-text">PDF, Word, PowerPoint, text or image. Up to 10MB.</div>
+                </form>
+
+                <hr>
+
+                {% if subject.files %}
+                <div class="d-flex flex-column gap-2">
+                    {% for f in subject.files %}
+                    <div class="subject-file-row">
+                        <a href="{{ url_for('subject_file', file_id=f.id) }}"
+                           target="_blank" rel="noopener"
+                           class="file-preview-card text-decoration-none">
+                            <i class="bi {{ f.icon }} file-preview-icon"></i>
+                            <div class="file-preview-info">
+                                <div class="file-preview-name">{{ f.file_name }}</div>
+                                <div class="file-preview-size">{{ f.size_text }} | {{ f.created_at.strftime('%d %b %Y') }}</div>
+                            </div>
+                            <i class="bi bi-box-arrow-up-right file-preview-open"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_subject_file', file_id=f.id) }}"
+                              class="confirm-delete-form" data-confirm-msg="Delete {{ f.file_name }}?">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="todo-delete-btn" title="Delete">&times;</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted small text-center mb-0 py-3">No notes yet. Upload your first one above.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

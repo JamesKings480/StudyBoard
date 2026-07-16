@@ -1,9 +1,32 @@
 from datetime import datetime, date
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import deferred
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
+
+
+def file_icon_for(filename):
+    ext = filename.rsplit('.', 1)[-1].lower() if filename and '.' in filename else ''
+    if ext == 'pdf':
+        return 'bi-file-earmark-pdf'
+    if ext in ('docx', 'doc'):
+        return 'bi-file-earmark-word'
+    if ext == 'pptx':
+        return 'bi-file-earmark-slides'
+    if ext in ('png', 'jpg', 'jpeg'):
+        return 'bi-file-earmark-image'
+    return 'bi-file-earmark-text'
+
+
+def size_text_for(size_bytes):
+    if not size_bytes:
+        return ''
+    kb = size_bytes / 1024
+    if kb > 1024:
+        return str(round(kb / 1024, 1)) + ' MB'
+    return str(round(kb)) + ' KB'
 
 
 class User(UserMixin, db.Model):
@@ -33,6 +56,13 @@ class Subject(db.Model):
     assessments = db.relationship('Assessment', backref='subject', lazy=True, cascade='all, delete-orphan')
     study_sessions = db.relationship('StudySession', backref='subject', lazy=True, cascade='all, delete-orphan')
     todo_items = db.relationship('TodoItem', backref='subject', lazy=True, cascade='all, delete-orphan')
+    files = db.relationship('SubjectFile', backref='subject', lazy=True,
+                            cascade='all, delete-orphan',
+                            order_by='desc(SubjectFile.created_at)')
+
+    @property
+    def flashcards(self):
+        return []
 
 class Assessment(db.Model):
     __tablename__ = 'assessments'
@@ -46,30 +76,18 @@ class Assessment(db.Model):
     task_notification = db.Column(db.Text, nullable=True)
     task_file_name = db.Column(db.String(255), nullable=True)
     task_file_size = db.Column(db.Integer, nullable=True)
-    task_file_data = db.Column(db.LargeBinary, nullable=True)
+    task_file_data = deferred(db.Column(db.LargeBinary, nullable=True))
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     tasks = db.relationship('Task', backref='assessment', lazy=True, cascade='all, delete-orphan')
 
     @property
     def task_file_icon(self):
-        if not self.task_file_name:
-            return ''
-        ext = self.task_file_name.rsplit('.', 1)[-1].lower()
-        if ext == 'pdf':
-            return 'bi-file-earmark-pdf'
-        if ext == 'docx':
-            return 'bi-file-earmark-word'
-        return 'bi-file-earmark-text'
+        return file_icon_for(self.task_file_name) if self.task_file_name else ''
 
     @property
     def task_file_size_text(self):
-        if not self.task_file_size:
-            return ''
-        kb = self.task_file_size / 1024
-        if kb > 1024:
-            return str(round(kb / 1024, 1)) + ' MB'
-        return str(round(kb)) + ' KB'
+        return size_text_for(self.task_file_size)
 
 class Task(db.Model):
     __tablename__ = 'tasks'
@@ -93,6 +111,24 @@ class Task(db.Model):
     def context_label(self):
         return self.assessment.name
     
+class SubjectFile(db.Model):
+    __tablename__ = 'subject_files'
+    id = db.Column(db.Integer, primary_key=True)
+    file_name = db.Column(db.String(255), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
+    file_data = deferred(db.Column(db.LargeBinary, nullable=False))
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def icon(self):
+        return file_icon_for(self.file_name)
+
+    @property
+    def size_text(self):
+        return size_text_for(self.file_size)
+
+
 class TodoItem(db.Model):
     __tablename__ = 'todo_items'
     id = db.Column(db.Integer, primary_key=True)

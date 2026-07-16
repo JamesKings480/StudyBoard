@@ -54,7 +54,7 @@ HSC_SUBJECTS = {
     'Visual Arts': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/creative-arts/visual-arts-stage-6-2016',
 }
 
-from models import db, User, Subject, Assessment, Task, StudySession, TodoItem
+from models import db, User, Subject, Assessment, Task, StudySession, TodoItem, SubjectFile
 from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm, TodoItemForm
 
 app = Flask(__name__)
@@ -64,13 +64,38 @@ MAX_NOTIFICATION_CHARS = 20000
 FILE_MIMETYPES = {
     'pdf': 'application/pdf',
     'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'doc': 'application/msword',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'txt': 'text/plain',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
 }
-OPEN_IN_BROWSER = {'pdf', 'txt'}
+OPEN_IN_BROWSER = {'pdf', 'txt', 'png', 'jpg', 'jpeg'}
+NOTE_EXTENSIONS = {'pdf', 'docx', 'doc', 'pptx', 'txt', 'png', 'jpg', 'jpeg'}
+MAX_NOTE_SIZE = 10 * 1024 * 1024
 MAX_FILE_SIZE = 5 * 1024 * 1024 
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def allowed_file(filename, allowed=None):
+    allowed = allowed or ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed
+
+
+def safe_filename(original_name):
+    filename = secure_filename(original_name)
+    if '.' not in filename:
+        filename = 'file.' + original_name.rsplit('.', 1)[1].lower()
+    return filename
+
+
+def serve_stored_file(name, data):
+    ext = name.rsplit('.', 1)[-1].lower()
+    return send_file(
+        io.BytesIO(data),
+        mimetype=FILE_MIMETYPES.get(ext, 'application/octet-stream'),
+        as_attachment=ext not in OPEN_IN_BROWSER,
+        download_name=name
+    )
 
 def extract_text_from_file(uploaded_file, filename):
     ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
@@ -121,9 +146,7 @@ def get_notification_text(form):
     if file_size > MAX_FILE_SIZE:
         return typed_text, None, 'File is too large. Maximum size is 5MB.'
 
-    filename = secure_filename(original_name)
-    if '.' not in filename:
-        filename = 'task_file.' + original_name.rsplit('.', 1)[1].lower()
+    filename = safe_filename(original_name)
 
     file_data = uploaded_file.read()
     extracted = extract_text_from_file(uploaded_file, filename)
@@ -433,6 +456,66 @@ def delete_subject(subject_id):
     flash(f'Subject "{name}" deleted.', 'info')
     return redirect(url_for('subjects_list'))
 
+@app.route('/subject/<int:subject_id>/file/new', methods=['POST'])
+@login_required
+def upload_subject_file(subject_id):
+    subject = Subject.query.get_or_404(subject_id)
+    if subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    uploaded_file = request.files.get('subject_file')
+    if not uploaded_file or not uploaded_file.filename:
+        flash('Choose a file to upload first.', 'warning')
+        return redirect(url_for('subject_detail', subject_id=subject.id))
+
+    if not allowed_file(uploaded_file.filename, NOTE_EXTENSIONS):
+        flash('You can upload PDF, Word, PowerPoint, text and image files.', 'danger')
+        return redirect(url_for('subject_detail', subject_id=subject.id))
+
+    uploaded_file.seek(0, os.SEEK_END)
+    file_size = uploaded_file.tell()
+    uploaded_file.seek(0)
+    if file_size > MAX_NOTE_SIZE:
+        flash('That file is too large. Maximum size is 10MB.', 'danger')
+        return redirect(url_for('subject_detail', subject_id=subject.id))
+
+    note = SubjectFile(
+        file_name=safe_filename(uploaded_file.filename),
+        file_size=file_size,
+        file_data=uploaded_file.read(),
+        subject_id=subject.id
+    )
+    db.session.add(note)
+    db.session.commit()
+    flash(f'"{note.file_name}" uploaded.', 'success')
+    return redirect(url_for('subject_detail', subject_id=subject.id))
+
+
+@app.route('/subject/file/<int:file_id>')
+@login_required
+def subject_file(file_id):
+    note = SubjectFile.query.get_or_404(file_id)
+    if note.subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    return serve_stored_file(note.file_name, note.file_data)
+
+
+@app.route('/subject/file/<int:file_id>/delete', methods=['POST'])
+@login_required
+def delete_subject_file(file_id):
+    note = SubjectFile.query.get_or_404(file_id)
+    if note.subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    subject_id = note.subject_id
+    db.session.delete(note)
+    db.session.commit()
+    flash('File deleted.', 'info')
+    return redirect(url_for('subject_detail', subject_id=subject_id))
+
+
 @app.route('/subject/<int:subject_id>/assessment/new', methods=['GET', 'POST'])
 @login_required
 def create_assessment(subject_id):
@@ -538,13 +621,7 @@ def assessment_file(assessment_id):
         flash('There is no file attached to that assessment.', 'warning')
         return redirect(url_for('assessment_detail', assessment_id=assessment.id))
 
-    ext = assessment.task_file_name.rsplit('.', 1)[-1].lower()
-    return send_file(
-        io.BytesIO(assessment.task_file_data),
-        mimetype=FILE_MIMETYPES.get(ext, 'application/octet-stream'),
-        as_attachment=ext not in OPEN_IN_BROWSER,
-        download_name=assessment.task_file_name
-    )
+    return serve_stored_file(assessment.task_file_name, assessment.task_file_data)
 
 
 @app.route('/assessment/<int:assessment_id>/delete', methods=['POST'])
