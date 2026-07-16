@@ -133,6 +133,83 @@ def get_notification_text(form):
     file_info = {'name': filename, 'size': file_size, 'data': file_data}
     return extracted[:MAX_NOTIFICATION_CHARS], file_info, None
 
+FALLBACK_STEPS = {
+    'Essay': [
+        'Read the task notification and marking criteria',
+        'Research and gather your sources',
+        'Plan the structure and write your thesis',
+        'Write the first draft',
+        'Edit, proofread and check the referencing',
+    ],
+    'Exam': [
+        'Collect all your notes and past papers',
+        'Summarise each topic onto one page',
+        'Practise questions under timed conditions',
+        'Review everything you got wrong',
+        'Final revision of your weakest topics',
+    ],
+    'Research Task': [
+        'Read the task notification and marking criteria',
+        'Find and record your sources',
+        'Take notes and gather your evidence',
+        'Write the draft',
+        'Proofread and finish the bibliography',
+    ],
+    'Practical': [
+        'Read the task notification and safety requirements',
+        'Plan the method and gather materials',
+        'Carry out the practical and record results',
+        'Analyse your results',
+        'Write up the report',
+    ],
+    'Presentation': [
+        'Read the task notification and marking criteria',
+        'Research the content',
+        'Build the slides or visuals',
+        'Rehearse out loud and time yourself',
+        'Final rehearsal and fix the timing',
+    ],
+    'Assignment': [
+        'Read the task notification and marking criteria',
+        'Break the task into its required parts',
+        'Do the research or the working',
+        'Write or build the draft',
+        'Check against the marking criteria and submit',
+    ],
+    'Other': [
+        'Read the task notification and marking criteria',
+        'Plan what needs doing',
+        'Do the main body of the work',
+        'Review against the marking criteria',
+        'Final check and submit',
+    ],
+}
+
+
+def build_fallback_subtasks(assessment_type, days_available):
+    steps = FALLBACK_STEPS.get(assessment_type, FALLBACK_STEPS['Other'])
+    subtasks = []
+    for index, title in enumerate(steps):
+        fraction = (len(steps) - index - 1) / len(steps)
+        subtasks.append({'title': title, 'days_before_due': int(days_available * fraction)})
+    return subtasks
+
+
+def save_subtasks(assessment, subtasks):
+    today = date.today()
+    for item in subtasks:
+        task_date = assessment.due_date - timedelta(days=item['days_before_due'])
+        if task_date < today:
+            task_date = today
+        task = Task(
+            title=item['title'],
+            description=item.get('description') or None,
+            scheduled_date=task_date,
+            assessment_id=assessment.id
+        )
+        db.session.add(task)
+    db.session.commit()
+
 csrf = CSRFProtect(app)
 db.init_app(app)
 
@@ -373,7 +450,15 @@ def create_assessment(subject_id):
             assessment.task_file_data = file_info['data']
         db.session.add(assessment)
         db.session.commit()
-        flash(f'Assessment "{assessment.name}" created!', 'success')
+
+        days_available = (assessment.due_date - date.today()).days
+        subtasks = generate_subtasks(assessment.assessment_type, days_available, assessment.task_notification)
+        if subtasks:
+            save_subtasks(assessment, subtasks)
+            flash(f'Assessment "{assessment.name}" created with an AI study plan!', 'success')
+        else:
+            save_subtasks(assessment, build_fallback_subtasks(assessment.assessment_type, days_available))
+            flash(f'Assessment "{assessment.name}" created, but the AI plan was not available so I have used a standard {assessment.assessment_type.lower()} plan. You can edit the subtasks below.', 'warning')
         return redirect(url_for('assessment_detail', assessment_id=assessment.id))
     return render_template('assessment_form.html', form=form, subject=subject, assessment=None, title='New Assessment')
 

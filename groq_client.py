@@ -13,9 +13,10 @@ SUBTASK_SCHEMA = {
                 'type': 'object',
                 'properties': {
                     'title': {'type': 'string'},
+                    'description': {'type': 'string'},
                     'days_before_due': {'type': 'integer'}
                 },
-                'required': ['title', 'days_before_due'],
+                'required': ['title', 'description', 'days_before_due'],
                 'additionalProperties': False
             }
         }
@@ -32,11 +33,14 @@ def build_subtask_prompt(assessment_type, days_available, task_text):
     prompt += 'Assessment type: ' + str(assessment_type) + ' '
     prompt += 'Days available: ' + str(days_available) + ' '
     prompt += 'Task notification: ' + str(task_text) + ' '
-    prompt += 'Return JSON with a list of subtasks, each having a title and days_before_due. '
-    prompt += 'Give between 4 and 8 subtasks. days_before_due counts backwards from the '
-    prompt += 'due date, so the first thing to do has the largest number. '
-    prompt += 'Every title must be a specific action drawn from this task notification, '
-    prompt += 'not generic study advice. Keep each title under 15 words.'
+    prompt += 'Return JSON with a list of subtasks, each having a title, a description '
+    prompt += 'and days_before_due. Give between 4 and 8 subtasks. days_before_due counts '
+    prompt += 'backwards from the due date, so the first thing to do has the largest number. '
+    prompt += 'The title is one short line naming the step, under 15 words. '
+    prompt += 'The description is two or three sentences telling the student exactly how to '
+    prompt += 'do that step for this particular task, referring to the actual requirements '
+    prompt += 'and marking criteria in the notification above. '
+    prompt += 'Every subtask must be specific to this task, not generic study advice.'
     return prompt
 
 
@@ -50,7 +54,11 @@ def clean_subtasks(raw_subtasks):
             days = int(item.get('days_before_due', 0))
         except (TypeError, ValueError):
             days = 0
-        cleaned.append({'title': title[:200], 'days_before_due': max(0, days)})
+        cleaned.append({
+            'title': title[:200],
+            'description': str(item.get('description', '')).strip(),
+            'days_before_due': max(0, days)
+        })
     return cleaned
 
 
@@ -71,7 +79,7 @@ def generate_subtasks(assessment_type, days_available, task_text):
                 'content': build_subtask_prompt(assessment_type, days_available, task_text)
             }],
             reasoning_effort='low',
-            max_completion_tokens=4000,
+            max_completion_tokens=6000,
             response_format={
                 'type': 'json_schema',
                 'json_schema': {

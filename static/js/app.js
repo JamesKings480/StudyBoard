@@ -288,3 +288,13 @@ function setupDropZone() {
         }
     });
 }
+
+function toggleSubtask(btn, taskId) {
+    var detail = document.getElementById('subtaskDetail' + taskId);
+    if (!detail) return;
+    var isOpen = detail.style.display !== 'none';
+    detail.style.display = isOpen ? 'none' : 'block';
+    btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+    btn.setAttribute('title', isOpen ? 'Show details' : 'Hide details');
+    btn.querySelector('i').className = isOpen ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+}

@@ -610,3 +610,62 @@ a.file-preview-card:hover {
 a.file-preview-card:hover .file-preview-open {
     color: var(--sb-primary);
 }
+
+.subtask-box {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+}
+
+.subtask-box.done {
+    background-color: #f1f5f9;
+}
+
+.subtask-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.subtask-main {
+    min-width: 0;
+}
+
+.subtask-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.subtask-btn {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #64748b;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    padding: 0;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.subtask-btn:hover {
+    border-color: var(--sb-primary);
+    color: var(--sb-primary);
+}
+
+.subtask-detail {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #e2e8f0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #475569;
+    white-space: pre-line;
+}

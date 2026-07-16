@@ -74,6 +74,7 @@ class Task(db.Model):
     __tablename__ = 'tasks'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
     scheduled_date = db.Column(db.Date, nullable=False)
     status = db.Column(db.String(20), nullable=False, default='Incomplete')
     assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
