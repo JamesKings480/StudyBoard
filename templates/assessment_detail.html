@@ -100,7 +100,20 @@
                 {% if assessment.mark is not none %}
                 <small class="text-muted mt-2 d-block">Recorded mark: <strong>{{ assessment.mark }}%</strong></small>
                 {% endif %}
-                {% if assessment.task_notification %}
+                {% if assessment.task_file_name %}
+                <hr>
+                <h6 class="fw-bold small">Task Notification</h6>
+                <a href="{{ url_for('assessment_file', assessment_id=assessment.id) }}"
+                   target="_blank" rel="noopener"
+                   class="file-preview-card text-decoration-none">
+                    <i class="bi {{ assessment.task_file_icon }} file-preview-icon"></i>
+                    <div class="file-preview-info">
+                        <div class="file-preview-name">{{ assessment.task_file_name }}</div>
+                        <div class="file-preview-size">{{ assessment.task_file_size_text }}</div>
+                    </div>
+                    <i class="bi bi-box-arrow-up-right file-preview-open"></i>
+                </a>
+                {% elif assessment.task_notification %}
                 <hr>
                 <h6 class="fw-bold small">Task Notification</h6>
                 <p class="small text-muted" style="white-space: pre-wrap;">{{ assessment.task_notification }}</p>

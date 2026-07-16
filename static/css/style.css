@@ -590,3 +590,23 @@ body {
 .file-preview-remove:hover {
     color: #ef4444;
 }
+
+a.file-preview-card {
+    color: inherit;
+    cursor: pointer;
+}
+
+a.file-preview-card:hover {
+    border-color: var(--sb-primary);
+    background-color: #f8fafc;
+}
+
+.file-preview-open {
+    font-size: 1rem;
+    color: #cbd5e1;
+    flex-shrink: 0;
+}
+
+a.file-preview-card:hover .file-preview-open {
+    color: var(--sb-primary);
+}

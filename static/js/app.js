@@ -222,6 +222,9 @@ function showFileName(input) {
         return;
     }
 
+    var existing = document.getElementById('existingFileCard');
+    if (existing) existing.style.display = 'none';
+
     var file = input.files[0];
     var sizeKB = file.size / 1024;
     var sizeText = sizeKB > 1024 ? (sizeKB / 1024).toFixed(1) + ' MB' : Math.round(sizeKB) + ' KB';
@@ -241,6 +244,13 @@ function showFileName(input) {
         '</div>';
     display.querySelector('.file-preview-name').textContent = file.name;
     display.style.display = 'block';
+}
+
+function removeExistingFile() {
+    var card = document.getElementById('existingFileCard');
+    var flag = document.getElementById('removeTaskFile');
+    if (flag) flag.value = '1';
+    if (card) card.style.display = 'none';
 }
 
 function clearFile() {
