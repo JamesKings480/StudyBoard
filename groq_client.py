@@ -50,8 +50,6 @@ def clean_subtasks(raw_subtasks):
             days = int(item.get('days_before_due', 0))
         except (TypeError, ValueError):
             days = 0
-        # Negative would schedule work after the due date, which is nonsense.
-        # The upper end is capped later when the date is worked out.
         cleaned.append({'title': title[:200], 'days_before_due': max(0, days)})
     return cleaned
 
