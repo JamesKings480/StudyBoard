@@ -669,3 +669,35 @@ a.file-preview-card:hover .file-preview-open {
     color: #475569;
     white-space: pre-line;
 }
+
+.today-item.todo-done {
+    background-color: #f0fdf4;
+}
+
+.today-item.todo-done .today-item-title {
+    text-decoration: line-through;
+    color: #9ca3af;
+}
+
+.today-item-body {
+    min-width: 0;
+}
+
+.todo-delete-btn {
+    background: none;
+    border: none;
+    color: #cbd5e1;
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 0 0.25rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.todo-delete-btn:hover {
+    color: #ef4444;
+}
+
+.no-picker::-webkit-calendar-picker-indicator {
+    display: none;
+}

@@ -113,36 +113,74 @@
     <div class="col-lg-4">
         <div class="card h-100 shadow-sm">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold">Today's Tasks</h6>
-                <span class="badge bg-primary">{{ todays_tasks|length }}</span>
+                <h6 class="mb-0 fw-bold">Today</h6>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary">{{ todays_items|length }}</span>
+                    <button class="btn btn-sm btn-outline-primary task-check-btn" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#addTodoForm"
+                            aria-expanded="false" aria-controls="addTodoForm" title="Add a to-do">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0">
-                {% if todays_tasks %}
+                <div class="collapse" id="addTodoForm">
+                    <div class="p-3 border-bottom bg-light">
+                        {% if subjects %}
+                        <form method="POST" action="{{ url_for('create_todo') }}">
+                            {{ todo_form.hidden_tag() }}
+                            <div class="mb-2">
+                                {{ todo_form.title(class="form-control form-control-sm", placeholder="e.g. Finish the Chem prac write-up") }}
+                            </div>
+                            <div class="d-flex gap-2 mb-2">
+                                {{ todo_form.subject_id(class="form-select form-select-sm") }}
+                                {{ todo_form.scheduled_date(class="form-control form-control-sm no-picker") }}
+                            </div>
+                            <div class="d-grid">
+                                {{ todo_form.submit(class="btn btn-sm btn-primary") }}
+                            </div>
+                        </form>
+                        {% else %}
+                        <p class="small text-muted mb-0">Add a subject first, then you can put to-dos against it.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if todays_items %}
                 <div class="list-group list-group-flush">
-                    {% for t in todays_tasks %}
-                    <div class="list-group-item d-flex align-items-center py-2">
-                        <form method="POST" action="{{ url_for('toggle_task', task_id=t.id) }}" class="me-2">
+                    {% for item in todays_items %}
+                    <div class="list-group-item today-item d-flex align-items-center py-2 {% if item.status == 'Complete' %}todo-done{% endif %}">
+                        <form method="POST" action="{% if item.is_todo %}{{ url_for('toggle_todo', todo_id=item.id) }}{% else %}{{ url_for('toggle_task', task_id=item.id) }}{% endif %}" class="me-2">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-sm btn-outline-primary task-check-btn">
-                                <i class="bi bi-square"></i>
+                            <button type="submit" class="btn btn-sm task-check-btn {% if item.status == 'Complete' %}btn-success{% else %}btn-outline-primary{% endif %}"
+                                    title="{% if item.status == 'Complete' %}Mark as not done{% else %}Mark as done{% endif %}">
+                                <i class="bi bi-{% if item.status == 'Complete' %}check-lg{% else %}square{% endif %}"></i>
                             </button>
                         </form>
-                        <div>
-                            <div style="font-size: 0.9rem;">{{ t.title }}</div>
+                        <div class="flex-grow-1 today-item-body">
+                            <div class="today-item-title" style="font-size: 0.9rem;">{{ item.title }}</div>
                             <small>
-                                <span class="badge rounded-pill" style="background-color: {{ t.assessment.subject.colour }}; font-size: 0.6rem;">
-                                    {{ t.assessment.subject.name }}
+                                <span class="badge rounded-pill" style="background-color: {{ item.subject.colour }}; font-size: 0.6rem;">
+                                    {{ item.subject.name }}
                                 </span>
-                                <span class="text-muted" style="font-size: 0.75rem;">{{ t.assessment.name }}</span>
+                                <span class="text-muted" style="font-size: 0.75rem;">{{ item.context_label }}</span>
+                                {% if item.scheduled_date < today %}
+                                <span class="badge bg-danger" style="font-size: 0.6rem;">Overdue</span>
+                                {% endif %}
                             </small>
                         </div>
+                        {% if item.is_todo %}
+                        <form method="POST" action="{{ url_for('delete_todo', todo_id=item.id) }}" class="confirm-delete-form" data-confirm-msg="Delete this to-do?">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="todo-delete-btn" title="Delete">&times;</button>
+                        </form>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
                 <div class="text-center text-muted py-4">
                     <i class="bi bi-emoji-smile fs-1 d-block mb-2"></i>
-                    No tasks due today
+                    Nothing due today
                 </div>
                 {% endif %}
             </div>

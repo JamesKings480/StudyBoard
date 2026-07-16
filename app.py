@@ -54,8 +54,8 @@ HSC_SUBJECTS = {
     'Visual Arts': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/creative-arts/visual-arts-stage-6-2016',
 }
 
-from models import db, User, Subject, Assessment, Task, StudySession
-from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm
+from models import db, User, Subject, Assessment, Task, StudySession, TodoItem
+from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm, TodoItemForm
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -304,8 +304,17 @@ def dashboard():
     todays_tasks = Task.query.join(Assessment).join(Subject).filter(
         Subject.user_id == current_user.id,
         Task.scheduled_date <= today,
-        Task.status == 'Incomplete'
-    ).order_by(Task.scheduled_date).all()
+        db.or_(Task.status == 'Incomplete', Task.scheduled_date == today)
+    ).all()
+    todays_todos = TodoItem.query.join(Subject).filter(
+        Subject.user_id == current_user.id,
+        TodoItem.scheduled_date <= today,
+        db.or_(TodoItem.status == 'Incomplete', TodoItem.scheduled_date == today)
+    ).all()
+    todays_items = sorted(
+        todays_tasks + todays_todos,
+        key=lambda item: (item.status == 'Complete', item.scheduled_date)
+    )
 
     sessions = StudySession.query.filter(
         StudySession.user_id == current_user.id,
@@ -327,9 +336,11 @@ def dashboard():
         if 0 <= day_index < 7:
             daily_totals[day_index] += s.duration_minutes
     max_daily = max(daily_totals) if max(daily_totals) > 0 else 1
-
+    todo_form = TodoItemForm()
+    todo_form.subject_id.choices = [(s.id, s.name) for s in subjects]
+    todo_form.scheduled_date.data = today
     day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return render_template('dashboard.html', subjects=subjects, upcoming_assessments=upcoming_assessments, todays_tasks=todays_tasks, total_weekly_minutes=total_weekly_minutes, weekly_display=weekly_display, daily_totals=daily_totals, max_daily=max_daily, day_names=day_names, today=today)
+    return render_template('dashboard.html', subjects=subjects, upcoming_assessments=upcoming_assessments, todays_items=todays_items, todo_form=todo_form, total_weekly_minutes=total_weekly_minutes, weekly_display=weekly_display, daily_totals=daily_totals, max_daily=max_daily, day_names=day_names, today=today)
 
 @app.route('/study/save', methods=['POST'])
 @login_required
@@ -576,6 +587,56 @@ def toggle_task(task_id):
     task.status = 'Complete' if task.status == 'Incomplete' else 'Incomplete'
     db.session.commit()
     return redirect(request.referrer or url_for('dashboard'))
+
+@app.route('/todo/new', methods=['POST'])
+@login_required
+def create_todo():
+    subjects = Subject.query.filter_by(user_id=current_user.id).order_by(Subject.name).all()
+    form = TodoItemForm()
+    form.subject_id.choices = [(s.id, s.name) for s in subjects]
+    if form.validate_on_submit():
+        subject = Subject.query.get(form.subject_id.data)
+        if not subject or subject.user_id != current_user.id:
+            flash('Access denied.', 'danger')
+            return redirect(url_for('dashboard'))
+        todo = TodoItem(
+            title=form.title.data.strip(),
+            scheduled_date=form.scheduled_date.data,
+            subject_id=subject.id
+        )
+        db.session.add(todo)
+        db.session.commit()
+        flash('To-do added!', 'success')
+    else:
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                flash(error, 'danger')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/todo/<int:todo_id>/toggle', methods=['POST'])
+@login_required
+def toggle_todo(todo_id):
+    todo = TodoItem.query.get_or_404(todo_id)
+    if todo.subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    todo.status = 'Complete' if todo.status == 'Incomplete' else 'Incomplete'
+    db.session.commit()
+    return redirect(request.referrer or url_for('dashboard'))
+
+
+@app.route('/todo/<int:todo_id>/delete', methods=['POST'])
+@login_required
+def delete_todo(todo_id):
+    todo = TodoItem.query.get_or_404(todo_id)
+    if todo.subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    db.session.delete(todo)
+    db.session.commit()
+    flash('To-do deleted.', 'info')
+    return redirect(url_for('dashboard'))
 
 
 @app.route('/assessment/<int:assessment_id>/task/new', methods=['POST'])
