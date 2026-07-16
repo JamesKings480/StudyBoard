@@ -32,6 +32,7 @@ class Subject(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     assessments = db.relationship('Assessment', backref='subject', lazy=True, cascade='all, delete-orphan')
     study_sessions = db.relationship('StudySession', backref='subject', lazy=True, cascade='all, delete-orphan')
+    todo_items = db.relationship('TodoItem', backref='subject', lazy=True, cascade='all, delete-orphan')
 
 class Assessment(db.Model):
     __tablename__ = 'assessments'
@@ -79,7 +80,37 @@ class Task(db.Model):
     status = db.Column(db.String(20), nullable=False, default='Incomplete')
     assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def is_todo(self):
+        return False
+
+    @property
+    def subject(self):
+        return self.assessment.subject
+
+    @property
+    def context_label(self):
+        return self.assessment.name
     
+class TodoItem(db.Model):
+    __tablename__ = 'todo_items'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    scheduled_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='Incomplete')
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def is_todo(self):
+        return True
+
+    @property
+    def context_label(self):
+        return 'To-do'
+
+
 class StudySession(db.Model):
     __tablename__ = 'study_sessions'
     id = db.Column(db.Integer, primary_key=True)

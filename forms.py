@@ -90,3 +90,17 @@ class TaskForm(FlaskForm):
         DataRequired(message='Scheduled date is required')
     ])
     submit = SubmitField('Add Task')
+
+
+class TodoItemForm(FlaskForm):
+    title = StringField('To-do', validators=[
+        DataRequired(message='Give your to-do a title'),
+        Length(max=200)
+    ])
+    subject_id = SelectField('Subject', coerce=int, validators=[
+        DataRequired(message='Pick a subject for your to-do')
+    ])
+    scheduled_date = DateField('Date', validators=[
+        DataRequired(message='Pick a date for your to-do')
+    ])
+    submit = SubmitField('Add to-do')
