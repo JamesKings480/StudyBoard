@@ -701,3 +701,15 @@ a.file-preview-card:hover .file-preview-open {
 .no-picker::-webkit-calendar-picker-indicator {
     display: none;
 }
+
+.subject-file-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.subject-file-row .file-preview-card {
+    margin-top: 0;
+    flex-grow: 1;
+    min-width: 0;
+}
