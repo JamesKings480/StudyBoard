@@ -113,10 +113,38 @@
     <div class="col-lg-4">
         <div class="card h-100 shadow-sm">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold">Today's Tasks</h6>
-                <span class="badge bg-primary">{{ todays_tasks|length }}</span>
+                <h6 class="mb-0 fw-bold">Today</h6>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary">{{ todays_tasks|length }}</span>
+                    <button class="btn btn-sm btn-outline-primary task-check-btn" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#addTodoForm"
+                            aria-expanded="false" aria-controls="addTodoForm" title="Add a to-do">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0">
+                <div class="collapse" id="addTodoForm">
+                    <div class="p-3 border-bottom bg-light">
+                        {% if subjects %}
+                        <form method="POST" action="{{ url_for('create_todo') }}">
+                            {{ todo_form.hidden_tag() }}
+                            <div class="mb-2">
+                                {{ todo_form.title(class="form-control form-control-sm", placeholder="e.g. Finish the Chem prac write-up") }}
+                            </div>
+                            <div class="d-flex gap-2 mb-2">
+                                {{ todo_form.subject_id(class="form-select form-select-sm") }}
+                                {{ todo_form.scheduled_date(class="form-control form-control-sm") }}
+                            </div>
+                            <div class="d-grid">
+                                {{ todo_form.submit(class="btn btn-sm btn-primary") }}
+                            </div>
+                        </form>
+                        {% else %}
+                        <p class="small text-muted mb-0">Add a subject first, then you can put to-dos against it.</p>
+                        {% endif %}
+                    </div>
+                </div>
                 {% if todays_tasks %}
                 <div class="list-group list-group-flush">
                     {% for t in todays_tasks %}
