@@ -35,6 +35,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(150), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    has_seen_tour = db.Column(db.Boolean, nullable=False, default=False)
     study_sessions = db.relationship('StudySession', backref='user', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):

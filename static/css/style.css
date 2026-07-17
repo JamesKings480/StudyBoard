@@ -1013,3 +1013,41 @@ html.sb-reduce-motion .card:hover {
         box-shadow: var(--sb-shadow);
     }
 }
+
+.sb-tour-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background-color: var(--sb-tint);
+    color: var(--sb-primary);
+    font-size: 28px;
+    line-height: 64px;
+    text-align: center;
+    margin: 0 auto 1rem;
+}
+
+.sb-tour-body {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--sb-muted);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.sb-tour-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.sb-tour-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--sb-border);
+    transition: background-color var(--sb-transition);
+}
+
+.sb-tour-dot.active {
+    background-color: var(--sb-primary);
+}

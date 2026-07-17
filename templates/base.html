@@ -76,6 +76,30 @@
         </div>
     </div>
 
+    <div class="modal fade" id="tourModal" tabindex="-1" aria-labelledby="tourTitle"
+         data-sb-seen-url="{{ url_for('mark_tour_seen') }}"
+         {% if show_tour is defined and show_tour %}data-sb-autostart="1"{% endif %}>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center px-4 pb-4 pt-0">
+                    <div class="sb-tour-icon"><i class="bi" id="tourIcon" aria-hidden="true"></i></div>
+                    <h5 class="fw-bold mb-2" id="tourTitle"></h5>
+                    <p class="sb-tour-body" id="tourBody"></p>
+                    <div class="sb-tour-dots" id="tourDots" aria-hidden="true"></div>
+                    <span class="visually-hidden" id="tourStepText"></span>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="button" class="btn btn-outline-secondary flex-grow-1" id="tourSkip" data-bs-dismiss="modal">Skip</button>
+                        <button type="button" class="btn btn-outline-secondary" id="tourBack">Back</button>
+                        <button type="button" class="btn btn-primary px-4" id="tourNext">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -108,6 +132,14 @@
                             <label class="form-check-label" for="setReduceMotion">Reduce motion</label>
                         </div>
                         <div class="sb-setting-note">Turns off the card hover lift and all transitions. Already on automatically if your device asks for reduced motion.</div>
+                    </div>
+
+                    <div class="sb-settings-group mt-3">Help</div>
+                    <div class="sb-setting">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="helpBtn">
+                            <i class="bi bi-compass me-1" aria-hidden="true"></i>Show me around
+                        </button>
+                        <div class="sb-setting-note">A quick walkthrough of Studyboard.</div>
                     </div>
 
                     <div class="sb-settings-group mt-3">Account</div>
