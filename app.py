@@ -413,7 +413,8 @@ def subject_detail(subject_id):
         flash('Access denied.', 'danger')
         return redirect(url_for('dashboard'))
     assessments = Assessment.query.filter_by(subject_id=subject.id).order_by(Assessment.due_date).all()
-    return render_template('subject_detail.html', subject=subject, assessments=assessments, today=date.today())
+    return render_template('subject_detail.html', subject=subject, assessments=assessments,
+                           grade=get_grade_summary(subject), today=date.today())
 
 @app.route('/subject/<int:subject_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -433,6 +434,27 @@ def edit_subject(subject_id):
         flash(f'Subject "{subject.name}" updated!', 'success')
         return redirect(url_for('subject_detail', subject_id=subject.id))
     return render_template('subject_form.html', form=form, title='Edit Subject')
+
+
+@app.route('/subject/<int:subject_id>/target', methods=['POST'])
+@login_required
+def set_target(subject_id):
+    subject = Subject.query.get_or_404(subject_id)
+    if subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    try:
+        target = float(request.form.get('target_grade', ''))
+    except ValueError:
+        flash('Enter a target between 1 and 100.', 'danger')
+        return redirect(url_for('subject_detail', subject_id=subject.id))
+    if not 1 <= target <= 100:
+        flash('Enter a target between 1 and 100.', 'danger')
+        return redirect(url_for('subject_detail', subject_id=subject.id))
+    subject.target_grade = target
+    db.session.commit()
+    flash(f'Target for {subject.name} set to {target}%.', 'success')
+    return redirect(url_for('subject_detail', subject_id=subject.id))
 
 
 @app.route('/subject/<int:subject_id>/delete', methods=['POST'])

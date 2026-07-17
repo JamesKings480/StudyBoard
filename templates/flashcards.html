@@ -65,7 +65,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small mb-1">Topic</label>
-                        {{ form.topic_name(class="form-control form-control-sm", placeholder="e.g. Photosynthesis", list="topicOptions", autocomplete="off") }}
+                        {{ form.topic_name(class="form-control form-control-sm", placeholder="e.g. Economics Growth", list="topicOptions", autocomplete="off") }}
                         <datalist id="topicOptions">
                             {% for t in topics %}
                             <option value="{{ t.name }}"></option>
@@ -99,7 +99,7 @@
                 <span class="badge bg-danger">{{ work_on|length }}</span>
             </div>
             <div class="card-body p-0">
-                {{ topic_list(work_on, 'text-danger', 'bi-emoji-sunglasses', 'Nothing needs work. Make some cards or go again on a strong topic.') }}
+                {{ topic_list(work_on, 'text-danger', 'bi-emoji-sunglasses', 'Nothing needs work.') }}
             </div>
         </div>
     </div>
@@ -111,7 +111,7 @@
                 <span class="badge bg-success">{{ strong|length }}</span>
             </div>
             <div class="card-body p-0">
-                {{ topic_list(strong, 'text-success', 'bi-graph-up', 'Nothing yet. A topic needs ' ~ min_reviews ~ ' answers at ' ~ strong_threshold ~ '% or better to land here.') }}
+                {{ topic_list(strong, 'text-success', 'bi-graph-up', 'Nothing yet.') }}
             </div>
         </div>
     </div>

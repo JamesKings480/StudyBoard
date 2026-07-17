@@ -882,3 +882,32 @@ a.file-preview-card:hover .file-preview-open {
     font-size: 13px;
     font-weight: 600;
 }
+
+.grade-big {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--sb-ink);
+    line-height: 1;
+}
+
+.grade-verdict {
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--sb-radius-control);
+}
+
+.grade-verdict.needed {
+    background-color: var(--sb-warning-tint);
+    color: var(--sb-warning-text);
+}
+
+.grade-verdict.achieved {
+    background-color: var(--sb-success-tint);
+    color: var(--sb-success-text);
+}
+
+.grade-verdict.impossible {
+    background-color: var(--sb-danger-tint);
+    color: var(--sb-danger-text);
+}
