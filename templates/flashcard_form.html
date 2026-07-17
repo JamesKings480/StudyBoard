@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - Studyboard{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+        <h2 class="fw-bold mb-4"><i class="bi bi-card-text me-2"></i>{{ title }}</h2>
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label class="form-label">Subject</label>
+                        {{ form.subject_id(class="form-select") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Topic</label>
+                        {{ form.topic_name(class="form-control", placeholder="e.g. Photosynthesis") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Question</label>
+                        {{ form.question(class="form-control", rows="3") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Answer</label>
+                        {{ form.answer(class="form-control", rows="3") }}
+                    </div>
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('topic_review', topic_id=card.topic_id) }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

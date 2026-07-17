@@ -713,3 +713,32 @@ a.file-preview-card:hover .file-preview-open {
     flex-grow: 1;
     min-width: 0;
 }
+
+.flashcard-question {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #1e2a3a;
+    line-height: 1.4;
+    max-width: 640px;
+    margin: 0 auto;
+    white-space: pre-line;
+}
+
+.flashcard-answer {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e2e8f0;
+    font-size: 1.05rem;
+    color: #475569;
+    line-height: 1.6;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+    white-space: pre-line;
+}
+
+.topic-accuracy {
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.1;
+}

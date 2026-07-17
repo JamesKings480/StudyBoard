@@ -54,8 +54,8 @@ HSC_SUBJECTS = {
     'Visual Arts': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/creative-arts/visual-arts-stage-6-2016',
 }
 
-from models import db, User, Subject, Assessment, Task, StudySession, TodoItem, SubjectFile
-from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm, TodoItemForm
+from models import db, User, Subject, Assessment, Task, StudySession, TodoItem, SubjectFile, Topic, Flashcard, FlashcardReview
+from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm, TodoItemForm, FlashcardForm
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -74,6 +74,8 @@ FILE_MIMETYPES = {
 OPEN_IN_BROWSER = {'pdf', 'txt', 'png', 'jpg', 'jpeg'}
 NOTE_EXTENSIONS = {'pdf', 'docx', 'doc', 'pptx', 'txt', 'png', 'jpg', 'jpeg'}
 MAX_NOTE_SIZE = 10 * 1024 * 1024
+STRONG_ACCURACY_PERCENT = 70
+MIN_REVIEWS_FOR_STRONG = 3
 MAX_FILE_SIZE = 5 * 1024 * 1024 
 
 def allowed_file(filename, allowed=None):
@@ -653,8 +655,6 @@ def save_mark(assessment_id):
         flash(f'Mark saved: {assessment.mark}%', 'success')
     return redirect(url_for('assessment_detail', assessment_id=assessment.id))
 
-
-
 @app.route('/task/<int:task_id>/toggle', methods=['POST'])
 @login_required
 def toggle_task(task_id):
@@ -664,6 +664,211 @@ def toggle_task(task_id):
     task.status = 'Complete' if task.status == 'Incomplete' else 'Incomplete'
     db.session.commit()
     return redirect(request.referrer or url_for('dashboard'))
+
+def _review_counts_by_topic(user_id, only_correct=False):
+    query = db.session.query(
+        Flashcard.topic_id, db.func.count(FlashcardReview.id)
+    ).select_from(FlashcardReview).join(
+        Flashcard, FlashcardReview.flashcard_id == Flashcard.id
+    ).join(
+        Topic, Flashcard.topic_id == Topic.id
+    ).join(
+        Subject, Topic.subject_id == Subject.id
+    ).filter(Subject.user_id == user_id)
+    if only_correct:
+        query = query.filter(FlashcardReview.was_correct == True)
+    return dict(query.group_by(Flashcard.topic_id).all())
+
+
+def get_topic_stats(user_id, subject_id=None):
+    topic_query = Topic.query.join(Subject).filter(Subject.user_id == user_id)
+    if subject_id:
+        topic_query = topic_query.filter(Topic.subject_id == subject_id)
+    topics = topic_query.order_by(Subject.name, Topic.name).all()
+
+    card_counts = dict(db.session.query(
+        Flashcard.topic_id, db.func.count(Flashcard.id)
+    ).join(Topic, Flashcard.topic_id == Topic.id
+    ).join(Subject, Topic.subject_id == Subject.id
+    ).filter(Subject.user_id == user_id
+    ).group_by(Flashcard.topic_id).all())
+
+    total_reviews = _review_counts_by_topic(user_id)
+    correct_reviews = _review_counts_by_topic(user_id, only_correct=True)
+
+    strong = []
+    work_on = []
+    for topic in topics:
+        cards = card_counts.get(topic.id, 0)
+        if cards == 0:
+            continue
+        reviews = total_reviews.get(topic.id, 0)
+        correct = correct_reviews.get(topic.id, 0)
+        accuracy = round(correct / reviews * 100) if reviews else None
+        stat = {'topic': topic, 'cards': cards, 'reviews': reviews, 'accuracy': accuracy}
+        if reviews >= MIN_REVIEWS_FOR_STRONG and accuracy >= STRONG_ACCURACY_PERCENT:
+            strong.append(stat)
+        else:
+            work_on.append(stat)
+
+    strong.sort(key=lambda s: -s['accuracy'])
+    work_on.sort(key=lambda s: (s['accuracy'] is not None, s['accuracy'] or 0))
+    return strong, work_on
+
+
+def get_or_create_topic(subject, raw_name):
+    clean = ' '.join(raw_name.split())
+    topic = Topic.query.filter(
+        Topic.subject_id == subject.id,
+        db.func.lower(Topic.name) == clean.lower()
+    ).first()
+    if topic:
+        return topic
+    topic = Topic(name=clean, subject_id=subject.id)
+    db.session.add(topic)
+    db.session.flush()
+    return topic
+
+
+def build_flashcard_form():
+    subjects = Subject.query.filter_by(user_id=current_user.id).order_by(Subject.name).all()
+    form = FlashcardForm()
+    form.subject_id.choices = [(s.id, s.name) for s in subjects]
+    return form, subjects
+
+
+def flash_form_errors(form):
+    for field_errors in form.errors.values():
+        for error in field_errors:
+            flash(error, 'danger')
+
+
+@app.route('/flashcard/<int:card_id>/review', methods=['POST'])
+@login_required
+def record_review(card_id):
+    card = Flashcard.query.get_or_404(card_id)
+    if card.topic.subject.user_id != current_user.id:
+        return jsonify({'error': 'Access denied'}), 403
+    data = request.get_json(silent=True) or {}
+    if 'was_correct' not in data:
+        return jsonify({'error': 'No result sent'}), 400
+    review = FlashcardReview(was_correct=bool(data['was_correct']), flashcard_id=card.id)
+    db.session.add(review)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/flashcards')
+@login_required
+def flashcards_page():
+    form, subjects = build_flashcard_form()
+    topics = Topic.query.join(Subject).filter(
+        Subject.user_id == current_user.id
+    ).order_by(Subject.name, Topic.name).all()
+    strong, work_on = get_topic_stats(current_user.id)
+    return render_template('flashcards.html', form=form, subjects=subjects, topics=topics,
+                           strong=strong, work_on=work_on,
+                           strong_threshold=STRONG_ACCURACY_PERCENT,
+                           min_reviews=MIN_REVIEWS_FOR_STRONG)
+
+
+@app.route('/flashcard/new', methods=['POST'])
+@login_required
+def create_flashcard():
+    form, subjects = build_flashcard_form()
+    if not form.validate_on_submit():
+        flash_form_errors(form)
+        return redirect(url_for('flashcards_page'))
+
+    subject = Subject.query.get(form.subject_id.data)
+    if not subject or subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    topic = get_or_create_topic(subject, form.topic_name.data)
+    card = Flashcard(
+        question=form.question.data.strip(),
+        answer=form.answer.data.strip(),
+        topic_id=topic.id
+    )
+    db.session.add(card)
+    db.session.commit()
+    flash(f'Flashcard added to {topic.name}.', 'success')
+    return redirect(url_for('topic_review', topic_id=topic.id))
+
+
+@app.route('/flashcards/topic/<int:topic_id>')
+@login_required
+def topic_review(topic_id):
+    topic = Topic.query.get_or_404(topic_id)
+    if topic.subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    cards = Flashcard.query.filter_by(topic_id=topic.id).order_by(Flashcard.created_at).all()
+    deck = [{
+        'id': c.id,
+        'question': c.question,
+        'answer': c.answer,
+        'review_url': url_for('record_review', card_id=c.id)
+    } for c in cards]
+    return render_template('topic_review.html', topic=topic, cards=cards, deck=deck)
+
+
+@app.route('/flashcard/<int:card_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_flashcard(card_id):
+    card = Flashcard.query.get_or_404(card_id)
+    if card.topic.subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    form, subjects = build_flashcard_form()
+    if request.method == 'GET':
+        form.subject_id.data = card.topic.subject_id
+        form.topic_name.data = card.topic.name
+        form.question.data = card.question
+        form.answer.data = card.answer
+
+    if form.validate_on_submit():
+        subject = Subject.query.get(form.subject_id.data)
+        if not subject or subject.user_id != current_user.id:
+            flash('Access denied.', 'danger')
+            return redirect(url_for('dashboard'))
+
+        old_topic = card.topic
+        topic = get_or_create_topic(subject, form.topic_name.data)
+        card.question = form.question.data.strip()
+        card.answer = form.answer.data.strip()
+        card.topic_id = topic.id
+        db.session.commit()
+        if old_topic.id != topic.id and not old_topic.flashcards:
+            db.session.delete(old_topic)
+            db.session.commit()
+        flash('Flashcard updated.', 'success')
+        return redirect(url_for('topic_review', topic_id=topic.id))
+
+    flash_form_errors(form)
+    return render_template('flashcard_form.html', form=form, card=card, title='Edit Flashcard')
+
+
+@app.route('/flashcard/<int:card_id>/delete', methods=['POST'])
+@login_required
+def delete_flashcard(card_id):
+    card = Flashcard.query.get_or_404(card_id)
+    if card.topic.subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    topic = card.topic
+    db.session.delete(card)
+    db.session.commit()
+    if not topic.flashcards:
+        db.session.delete(topic)
+        db.session.commit()
+        flash('Flashcard deleted. That was the last card in that topic, so the topic has gone too.', 'info')
+        return redirect(url_for('flashcards_page'))
+    flash('Flashcard deleted.', 'info')
+    return redirect(url_for('topic_review', topic_id=topic.id))
+
 
 @app.route('/todo/new', methods=['POST'])
 @login_required

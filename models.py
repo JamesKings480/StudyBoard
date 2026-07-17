@@ -60,9 +60,11 @@ class Subject(db.Model):
                             cascade='all, delete-orphan',
                             order_by='desc(SubjectFile.created_at)')
 
+    topics = db.relationship('Topic', backref='subject', lazy=True, cascade='all, delete-orphan')
+
     @property
     def flashcards(self):
-        return []
+        return Flashcard.query.join(Topic).filter(Topic.subject_id == self.id).all()
 
 class Assessment(db.Model):
     __tablename__ = 'assessments'
@@ -155,3 +157,40 @@ class StudySession(db.Model):
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Topic(db.Model):
+    __tablename__ = 'topics'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    flashcards = db.relationship('Flashcard', backref='topic', lazy=True,
+                                 cascade='all, delete-orphan')
+
+    __table_args__ = (
+        db.UniqueConstraint('subject_id', 'name', name='uq_topic_name_per_subject'),
+    )
+
+
+class Flashcard(db.Model):
+    __tablename__ = 'flashcards'
+    id = db.Column(db.Integer, primary_key=True)
+    question = db.Column(db.Text, nullable=False)
+    answer = db.Column(db.Text, nullable=False)
+    topic_id = db.Column(db.Integer, db.ForeignKey('topics.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    reviews = db.relationship('FlashcardReview', backref='flashcard', lazy=True,
+                              cascade='all, delete-orphan')
+
+    @property
+    def subject(self):
+        return self.topic.subject
+
+
+class FlashcardReview(db.Model):
+    __tablename__ = 'flashcard_reviews'
+    id = db.Column(db.Integer, primary_key=True)
+    was_correct = db.Column(db.Boolean, nullable=False)
+    reviewed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    flashcard_id = db.Column(db.Integer, db.ForeignKey('flashcards.id'), nullable=False)
