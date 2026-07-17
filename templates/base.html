@@ -11,46 +11,28 @@
 </head>
     <body class="{% if not current_user.is_authenticated %}auth-page{% endif %}">
     {% if current_user.is_authenticated %}
-        <button class="sb-mobile-toggle" onclick="document.querySelector('.sb-sidebar').classList.toggle('show')">
-            <i class="bi bi-list"></i>
-        </button>
-
-        <aside class="sb-sidebar">
-            <a href="{{ url_for('dashboard') }}" class="sb-sidebar-brand">
-                <i class="bi bi-journal-bookmark-fill me-2"></i>Studyboard
-            </a>
-            <ul class="sb-sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
-                        <i class="bi bi-grid-1x2"></i> Dashboard
+        <nav class="sb-topbar">
+            <div class="sb-topbar-inner">
+                <div class="sb-topbar-left">
+                    <a href="{{ url_for('dashboard') }}" class="sb-brand">
+                        <span class="sb-logo-mark" aria-hidden="true">S</span>
+                        <span class="sb-brand-text">Studyboard</span>
                     </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'subjects_list' %}active{% endif %}" href="{{ url_for('subjects_list') }}">
-                        <i class="bi bi-book"></i> Subjects
-                    </a>
-                </li>
-            </ul>
-
-            {% if sidebar_subjects is defined and sidebar_subjects %}
-            <div class="sb-sidebar-divider"></div>
-            <div class="sb-sidebar-heading">My Subjects</div>
-            {% for s in sidebar_subjects %}
-            <a href="{{ url_for('subject_detail', subject_id=s.id) }}" class="sb-sidebar-subject">
-                <span class="subject-dot-sm" style="background-color: {{ s.colour }};"></span>
-                {{ s.name }}
-            </a>
-            {% endfor %}
-            {% endif %}
-
-            <div class="sb-sidebar-user">
-                <div class="user-avatar">{{ current_user.email[0]|upper }}</div>
-                <div class="flex-grow-1">
-                    <div class="text-white" style="font-size: 0.8rem;">{{ current_user.email.split('@')[0] }}</div>
+                    <div class="sb-nav">
+                        <a class="sb-nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"
+                           href="{{ url_for('dashboard') }}">Dashboard</a>
+                        <a class="sb-nav-link {% if request.endpoint in ['subjects_list', 'subject_detail', 'create_subject', 'edit_subject', 'create_assessment', 'edit_assessment', 'assessment_detail'] %}active{% endif %}"
+                           href="{{ url_for('subjects_list') }}">Subjects</a>
+                        <a class="sb-nav-link {% if request.endpoint in ['flashcards_page', 'topic_review', 'edit_flashcard'] %}active{% endif %}"
+                           href="{{ url_for('flashcards_page') }}">Flashcards</a>
+                    </div>
+                </div>
+                <div class="sb-topbar-right">
                     <a href="{{ url_for('logout') }}" class="sb-logout-link">Log out</a>
+                    <div class="sb-avatar" title="{{ current_user.email }}">{{ current_user.email[0]|upper }}</div>
                 </div>
             </div>
-        </aside>
+        </nav>
         {% endif %}
         
     <div class="{% if current_user.is_authenticated %}sb-main-content{% else %}container mt-4 mb-5{% endif %}">
