@@ -8,6 +8,17 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        (function () {
+            try {
+                var s = JSON.parse(localStorage.getItem('sbSettings') || '{}');
+                var c = document.documentElement.classList;
+                if (s.largeText) c.add('sb-large-text');
+                if (s.highContrast) c.add('sb-high-contrast');
+                if (s.reduceMotion) c.add('sb-reduce-motion');
+            } catch (e) {}
+        })();
+    </script>
 </head>
     <body class="{% if not current_user.is_authenticated %}auth-page{% endif %}">
     {% if current_user.is_authenticated %}
@@ -28,6 +39,10 @@
                     </div>
                 </div>
                 <div class="sb-topbar-right">
+                    <button type="button" class="sb-icon-btn" data-bs-toggle="modal"
+                            data-bs-target="#settingsModal" title="Settings" aria-label="Open settings">
+                        <i class="bi bi-gear" aria-hidden="true"></i>
+                    </button>
                     <a href="{{ url_for('logout') }}" class="sb-logout-link">Log out</a>
                     <div class="sb-avatar" title="{{ current_user.email }}">{{ current_user.email[0]|upper }}</div>
                 </div>
@@ -58,6 +73,50 @@
                 <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
             </div>
             <div class="toast-body" id="toastBody"></div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-bold" id="settingsTitle">Settings</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="sb-settings-group">Accessibility</div>
+
+                    <div class="sb-setting">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="setLargeText">
+                            <label class="form-check-label" for="setLargeText">Larger text</label>
+                        </div>
+                        <div class="sb-setting-note">Increases text size across every page.</div>
+                    </div>
+
+                    <div class="sb-setting">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="setHighContrast">
+                            <label class="form-check-label" for="setHighContrast">High contrast</label>
+                        </div>
+                        <div class="sb-setting-note">Darkens muted text and strengthens borders as assessed in WCAG AA.</div>
+                    </div>
+
+                    <div class="sb-setting">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="setReduceMotion">
+                            <label class="form-check-label" for="setReduceMotion">Reduce motion</label>
+                        </div>
+                        <div class="sb-setting-note">Turns off the card hover lift and all transitions. Already on automatically if your device asks for reduced motion.</div>
+                    </div>
+
+                    <div class="sb-settings-group mt-3">Account</div>
+                    <div class="sb-setting">
+                        <div class="sb-setting-note mb-2">Signed in as <strong>{{ current_user.email }}</strong></div>
+                        <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">Log out</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

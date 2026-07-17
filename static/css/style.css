@@ -911,3 +911,105 @@ a.file-preview-card:hover .file-preview-open {
     background-color: var(--sb-danger-tint);
     color: var(--sb-danger-text);
 }
+
+.sb-icon-btn {
+    background: none;
+    border: none;
+    color: var(--sb-muted);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color var(--sb-transition), color var(--sb-transition);
+}
+
+.sb-icon-btn:hover,
+.sb-icon-btn:focus-visible {
+    background-color: var(--sb-tint);
+    color: var(--sb-primary);
+}
+
+.sb-settings-group {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sb-muted);
+    margin-bottom: 0.6rem;
+}
+
+.sb-setting {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--sb-border);
+}
+
+.sb-setting:last-of-type {
+    border-bottom: none;
+}
+
+.form-check-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sb-ink);
+    cursor: pointer;
+}
+
+.form-check-input:checked {
+    background-color: var(--sb-primary);
+    border-color: var(--sb-primary);
+}
+
+.form-check-input:focus {
+    border-color: var(--sb-primary);
+    box-shadow: 0 0 0 3px var(--sb-tint);
+}
+
+.sb-setting-note {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--sb-muted);
+    margin-top: 0.25rem;
+}
+
+html.sb-high-contrast {
+    --sb-muted: #3B4C66;
+    --sb-muted-soft: #5C6B84;
+    --sb-body: #0E2A47;
+    --sb-border: #B8C4D6;
+}
+
+html.sb-large-text body { font-size: 17px; }
+html.sb-large-text .btn { font-size: 14px; }
+html.sb-large-text .btn-sm { font-size: 13px; }
+html.sb-large-text .form-control,
+html.sb-large-text .form-select { font-size: 14px; }
+html.sb-large-text .sb-nav-link { font-size: 14.5px; }
+html.sb-large-text .card-header h6 { font-size: 14.5px; }
+html.sb-large-text .badge { font-size: 12px; }
+html.sb-large-text .form-label,
+html.sb-large-text .form-text,
+html.sb-large-text .sb-setting-note { font-size: 13.5px; }
+html.sb-large-text .task-meta,
+html.sb-large-text .subtask-detail { font-size: 0.95rem; }
+
+html.sb-reduce-motion *,
+html.sb-reduce-motion *::before,
+html.sb-reduce-motion *::after {
+    transition: none !important;
+    animation: none !important;
+}
+
+html.sb-reduce-motion .card:hover {
+    box-shadow: var(--sb-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition: none !important;
+        animation: none !important;
+    }
+    .card:hover {
+        box-shadow: var(--sb-shadow);
+    }
+}

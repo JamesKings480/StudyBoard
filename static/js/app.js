@@ -206,6 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setupColourBubbles();
     setupDropZone();
     setupFlashcardDeck();
+    setupSettings();
 });
 
 function pickFile(acceptTypes) {
@@ -383,4 +384,44 @@ function showDeckSummary() {
     var pct = deck.length ? Math.round(deckCorrect / deck.length * 100) : 0;
     document.getElementById('summaryScore').textContent = deckCorrect + ' of ' + deck.length + ' (' + pct + '%)';
     document.getElementById('deckSummary').style.display = 'block';
+}
+
+var SB_SETTINGS_KEY = 'sbSettings';
+
+function loadSettings() {
+    try {
+        return JSON.parse(localStorage.getItem(SB_SETTINGS_KEY) || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function applySetting(name, cssClass, isOn) {
+    document.documentElement.classList.toggle(cssClass, isOn);
+    var settings = loadSettings();
+    settings[name] = isOn;
+    try {
+        localStorage.setItem(SB_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) {
+        showToast('That setting is on, but your browser would not save it.', 'error');
+    }
+}
+
+function setupSettings() {
+    var toggles = [
+        ['largeText', 'sb-large-text', 'setLargeText'],
+        ['highContrast', 'sb-high-contrast', 'setHighContrast'],
+        ['reduceMotion', 'sb-reduce-motion', 'setReduceMotion']
+    ];
+    var saved = loadSettings();
+
+    toggles.forEach(function (row) {
+        var name = row[0], cssClass = row[1], id = row[2];
+        var input = document.getElementById(id);
+        if (!input) return;
+        input.checked = !!saved[name];
+        input.addEventListener('change', function () {
+            applySetting(name, cssClass, input.checked);
+        });
+    });
 }
