@@ -205,6 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setupConfirmDeleteForms();
     setupColourBubbles();
     setupDropZone();
+    setupFlashcardDeck();
 });
 
 function pickFile(acceptTypes) {
@@ -297,4 +298,89 @@ function toggleSubtask(btn, taskId) {
     btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
     btn.setAttribute('title', isOpen ? 'Show details' : 'Hide details');
     btn.querySelector('i').className = isOpen ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+}
+var deck = [];
+var deckIndex = 0;
+var deckCorrect = 0;
+
+function setupFlashcardDeck() {
+    var data = document.getElementById('deckData');
+    if (!data) return;
+    deck = JSON.parse(data.textContent);
+    restartDeck();
+}
+
+function shuffleDeck(list) {
+    for (var i = list.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = list[i];
+        list[i] = list[j];
+        list[j] = temp;
+    }
+}
+
+function restartDeck() {
+    shuffleDeck(deck);
+    deckIndex = 0;
+    deckCorrect = 0;
+    showCard();
+}
+
+function showCard() {
+    if (deckIndex >= deck.length) {
+        showDeckSummary();
+        return;
+    }
+    var card = deck[deckIndex];
+    document.getElementById('cardQuestion').textContent = card.question;
+    document.getElementById('cardAnswer').textContent = card.answer;
+    document.getElementById('cardAnswer').style.display = 'none';
+    document.getElementById('showAnswerBtn').style.display = 'inline-block';
+    document.getElementById('markButtons').style.display = 'none';
+    document.getElementById('cardProgress').textContent = 'Card ' + (deckIndex + 1) + ' of ' + deck.length;
+    document.getElementById('deckSummary').style.display = 'none';
+    document.getElementById('cardFace').style.display = 'block';
+}
+
+function showAnswer() {
+    document.getElementById('cardAnswer').style.display = 'block';
+    document.getElementById('showAnswerBtn').style.display = 'none';
+    document.getElementById('markButtons').style.display = 'flex';
+}
+
+function markCard(wasCorrect) {
+    var card = deck[deckIndex];
+    var buttons = document.querySelectorAll('#markButtons button');
+    buttons.forEach(function (b) { b.disabled = true; });
+
+    fetch(card.review_url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({ was_correct: wasCorrect })
+    })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+        buttons.forEach(function (b) { b.disabled = false; });
+        if (!data.success) {
+            showToast(data.error || 'Could not save that answer.', 'error');
+            return;
+        }
+        if (wasCorrect) deckCorrect++;
+        deckIndex++;
+        showCard();
+    })
+    .catch(function () {
+        buttons.forEach(function (b) { b.disabled = false; });
+        showToast('Could not save that answer. Please try again.', 'error');
+    });
+}
+
+function showDeckSummary() {
+    document.getElementById('cardFace').style.display = 'none';
+    var pct = deck.length ? Math.round(deckCorrect / deck.length * 100) : 0;
+    document.getElementById('summaryScore').textContent = deckCorrect + ' of ' + deck.length + ' (' + pct + '%)';
+    document.getElementById('deckSummary').style.display = 'block';
 }

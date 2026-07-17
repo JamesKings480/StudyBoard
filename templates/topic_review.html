@@ -16,6 +16,40 @@
     </a>
 </div>
 
+{% if cards %}
+<script type="application/json" id="deckData">{{ deck|tojson }}</script>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body text-center py-4">
+        <div id="cardFace">
+            <div class="text-muted small mb-3" id="cardProgress"></div>
+            <div class="flashcard-question" id="cardQuestion"></div>
+            <div class="flashcard-answer" id="cardAnswer" style="display:none;"></div>
+            <button type="button" class="btn btn-primary mt-4" id="showAnswerBtn" onclick="showAnswer()">
+                Show answer
+            </button>
+            <div class="gap-2 justify-content-center mt-4" id="markButtons" style="display:none;">
+                <button type="button" class="btn btn-outline-danger px-4" onclick="markCard(false)">
+                    <i class="bi bi-x-lg me-1"></i>Not yet
+                </button>
+                <button type="button" class="btn btn-success px-4" onclick="markCard(true)">
+                    <i class="bi bi-check-lg me-1"></i>Got it
+                </button>
+            </div>
+        </div>
+        <div id="deckSummary" style="display:none;">
+            <i class="bi bi-trophy fs-1 text-warning d-block mb-2"></i>
+            <h5 class="fw-bold mb-1">Session done</h5>
+            <p class="text-muted mb-3">You got <span id="summaryScore"></span></p>
+            <div class="d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-primary" onclick="restartDeck()">Go again</button>
+                <a href="{{ url_for('flashcards_page') }}" class="btn btn-outline-secondary">Back to flashcards</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card shadow-sm">
     <div class="card-header bg-white">
         <h6 class="mb-0 fw-bold">Cards in this topic</h6>

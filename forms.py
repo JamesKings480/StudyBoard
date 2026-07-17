@@ -97,7 +97,7 @@ class FlashcardForm(FlaskForm):
         DataRequired(message='Pick a subject')
     ])
     topic_name = StringField('Topic', validators=[
-        DataRequired(message='Give your card a topic, for example Photosynthesis'),
+        DataRequired(message='Give your card a topic, for example Integration'),
         Length(max=100)
     ])
     question = TextAreaField('Question', validators=[

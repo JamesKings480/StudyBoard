@@ -1,8 +1,51 @@
 {% extends "base.html" %}
 {% block title %}Flashcards - Studyboard{% endblock %}
 {% block content %}
+
+{% macro topic_list(stats, colour_class, empty_icon, empty_text) %}
+    {% if stats %}
+    <div class="list-group list-group-flush">
+        {% for s in stats %}
+        <a href="{{ url_for('topic_review', topic_id=s.topic.id) }}" class="list-group-item list-group-item-action py-2">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+                <div style="min-width: 0;">
+                    <div class="fw-semibold">{{ s.topic.name }}</div>
+                    <small class="text-muted">
+                        <span class="subject-dot me-1" style="background-color: {{ s.topic.subject.colour }}; width: 8px; height: 8px;"></span>
+                        {{ s.topic.subject.name }} | {{ s.cards }} cards
+                    </small>
+                </div>
+                <div class="text-end flex-shrink-0">
+                    {% if s.accuracy is none %}
+                    <span class="badge bg-secondary">Not started</span>
+                    {% else %}
+                    <div class="topic-accuracy {{ colour_class }}">{{ s.accuracy }}%</div>
+                    <small class="text-muted">{{ s.reviews }} answers</small>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+        <i class="bi {{ empty_icon }} fs-1 d-block mb-2"></i>
+        {{ empty_text }}
+    </div>
+    {% endif %}
+{% endmacro %}
+
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="fw-bold mb-0"><i class="bi bi-card-text me-2"></i>Flashcards</h3>
+    <div>
+        <h3 class="fw-bold mb-0"><i class="bi bi-card-text me-2"></i>Flashcards</h3>
+        {% if active_subject %}
+        <small class="text-muted">
+            <span class="subject-dot me-1" style="background-color: {{ active_subject.colour }}; width: 8px; height: 8px;"></span>
+            {{ active_subject.name }} only
+            <a href="{{ url_for('flashcards_page') }}" class="ms-2">Show all subjects</a>
+        </small>
+        {% endif %}
+    </div>
     <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse"
             data-bs-target="#addCardForm" aria-expanded="false" aria-controls="addCardForm">
         <i class="bi bi-plus-circle me-1"></i>New Flashcard
@@ -42,42 +85,33 @@
                 {{ form.submit(class="btn btn-primary btn-sm") }}
             </form>
             {% else %}
-            <p class="text-muted small mb-0">Add a subject first</p>
+            <p class="text-muted small mb-0">Add a subject first, then you can make flashcards against it.</p>
             {% endif %}
         </div>
     </div>
 </div>
 
-{% block topic_lists %}
-<div class="card shadow-sm">
-    <div class="card-header bg-white">
-        <h6 class="mb-0 fw-bold">Your Topics</h6>
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Weak Topics</h6>
+                <span class="badge bg-danger">{{ work_on|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {{ topic_list(work_on, 'text-danger', 'bi-emoji-sunglasses', 'Strong Topics') }}
+            </div>
+        </div>
     </div>
-    <div class="card-body p-0">
-        {% if topics %}
-        <div class="list-group list-group-flush">
-            {% for t in topics %}
-            <a href="{{ url_for('topic_review', topic_id=t.id) }}" class="list-group-item list-group-item-action py-2">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="fw-semibold">{{ t.name }}</div>
-                        <small class="text-muted">
-                            <span class="subject-dot me-1" style="background-color: {{ t.subject.colour }}; width: 8px; height: 8px;"></span>
-                            {{ t.subject.name }}
-                        </small>
-                    </div>
-                    <span class="badge bg-secondary">{{ t.flashcards|length }} cards</span>
-                </div>
-            </a>
-            {% endfor %}
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-check-circle text-success me-2"></i>Strong topics</h6>
+                <span class="badge bg-success">{{ strong|length }}</span>
+            </div>
         </div>
-        {% else %}
-        <div class="text-center text-muted py-4">
-            <i class="bi bi-card-text fs-1 d-block mb-2"></i>
-            No flashcards yet. Make your first one above.
-        </div>
-        {% endif %}
     </div>
 </div>
-{% endblock %}
+
 {% endblock %}
