@@ -3,8 +3,6 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_wtf.csrf import CSRFProtect
 from datetime import date, timedelta
 from config import Config
-from models import db, User, Subject, Assessment, Task
-from forms import RegistrationForm, LoginForm, SubjectForm, AssessmentForm, MarkForm, TaskForm
 import io
 import os
 import pdfplumber
