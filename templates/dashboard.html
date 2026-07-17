@@ -88,13 +88,18 @@
             <div class="card-body">
                 {% if subjects %}
                     {% for s in subjects %}
+                    {% set g = grades[s.id] %}
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
-                            <span style="font-size: 0.9rem;">{{ s.name }}</span>
-                            <span class="fw-bold" style="font-size: 0.9rem;">--%</span>
+                            <a href="{{ url_for('subject_detail', subject_id=s.id) }}" class="text-decoration-none text-reset" style="font-size: 0.9rem;">{{ s.name }}</a>
+                            {% if g.has_marks %}
+                            <span class="fw-bold" style="font-size: 0.9rem;">{{ g.current }}%</span>
+                            {% else %}
+                            <span class="text-muted" style="font-size: 0.8rem;">No marks yet</span>
+                            {% endif %}
                         </div>
                         <div class="progress" style="height: 10px;">
-                            <div class="progress-bar" style="width: 0%; background-color: {{ s.colour }};"></div>
+                            <div class="progress-bar" style="width: {% if g.has_marks %}{{ g.current }}{% else %}0{% endif %}%; background-color: {{ s.colour }};"></div>
                         </div>
                     </div>
                     {% endfor %}

@@ -350,11 +350,12 @@ def dashboard():
         if 0 <= day_index < 7:
             daily_totals[day_index] += s.duration_minutes
     max_daily = max(daily_totals) if max(daily_totals) > 0 else 1
+    grades = {s.id: get_grade_summary(s) for s in subjects}
     todo_form = TodoItemForm()
     todo_form.subject_id.choices = [(s.id, s.name) for s in subjects]
     todo_form.scheduled_date.data = today
     day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return render_template('dashboard.html', subjects=subjects, upcoming_assessments=upcoming_assessments, todays_items=todays_items, todo_form=todo_form, total_weekly_minutes=total_weekly_minutes, weekly_display=weekly_display, daily_totals=daily_totals, max_daily=max_daily, day_names=day_names, today=today)
+    return render_template('dashboard.html', subjects=subjects, upcoming_assessments=upcoming_assessments, todays_items=todays_items, todo_form=todo_form, grades=grades, total_weekly_minutes=total_weekly_minutes, weekly_display=weekly_display, daily_totals=daily_totals, max_daily=max_daily, day_names=day_names, today=today)
 
 @app.route('/study/save', methods=['POST'])
 @login_required
@@ -412,7 +413,8 @@ def subject_detail(subject_id):
         flash('Access denied.', 'danger')
         return redirect(url_for('dashboard'))
     assessments = Assessment.query.filter_by(subject_id=subject.id).order_by(Assessment.due_date).all()
-    return render_template('subject_detail.html', subject=subject, assessments=assessments, today=date.today())
+    return render_template('subject_detail.html', subject=subject, assessments=assessments,
+                           grade=get_grade_summary(subject), today=date.today())
 
 @app.route('/subject/<int:subject_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -432,6 +434,27 @@ def edit_subject(subject_id):
         flash(f'Subject "{subject.name}" updated!', 'success')
         return redirect(url_for('subject_detail', subject_id=subject.id))
     return render_template('subject_form.html', form=form, title='Edit Subject')
+
+
+@app.route('/subject/<int:subject_id>/target', methods=['POST'])
+@login_required
+def set_target(subject_id):
+    subject = Subject.query.get_or_404(subject_id)
+    if subject.user_id != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    try:
+        target = float(request.form.get('target_grade', ''))
+    except ValueError:
+        flash('Enter a target between 1 and 100.', 'danger')
+        return redirect(url_for('subject_detail', subject_id=subject.id))
+    if not 1 <= target <= 100:
+        flash('Enter a target between 1 and 100.', 'danger')
+        return redirect(url_for('subject_detail', subject_id=subject.id))
+    subject.target_grade = target
+    db.session.commit()
+    flash(f'Target for {subject.name} set to {target}%.', 'success')
+    return redirect(url_for('subject_detail', subject_id=subject.id))
 
 
 @app.route('/subject/<int:subject_id>/delete', methods=['POST'])
@@ -703,6 +726,51 @@ def get_topic_stats(user_id, subject_id=None):
     strong.sort(key=lambda s: -s['accuracy'])
     work_on.sort(key=lambda s: (s['accuracy'] is not None, s['accuracy'] or 0))
     return strong, work_on
+
+
+def calculate_weighted_grade(subject_id):
+    assessments = Assessment.query.filter_by(subject_id=subject_id, status='Completed').all()
+    weighted_sum = 0
+    total_weight = 0
+    for a in assessments:
+        if a.mark is None:
+            continue
+        weighted_sum += (a.mark / 100) * a.weighting
+        total_weight += a.weighting
+    if total_weight == 0:
+        return 0
+    return (weighted_sum / total_weight) * 100
+
+
+def calculate_required_mark(subject_id, target_grade, current_grade):
+    completed = Assessment.query.filter_by(subject_id=subject_id, status='Completed').all()
+    completed_weight = sum(a.weighting for a in completed if a.mark is not None)
+    remaining_weight = 100 - completed_weight
+    if remaining_weight <= 0:
+        return -1 if current_grade >= target_grade else 101
+    earned_weighted_marks = (current_grade / 100) * completed_weight
+    needed_weighted_marks = target_grade - earned_weighted_marks
+    return round((needed_weighted_marks / remaining_weight) * 100, 1)
+
+
+def get_grade_summary(subject):
+    completed = Assessment.query.filter_by(subject_id=subject.id, status='Completed').all()
+    completed_weight = sum(a.weighting for a in completed if a.mark is not None)
+    entered_weight = sum(a.weighting for a in Assessment.query.filter_by(subject_id=subject.id).all())
+    target = subject.target_grade or 80
+    current = calculate_weighted_grade(subject.id)
+    required = calculate_required_mark(subject.id, target, current)
+    return {
+        'has_marks': completed_weight > 0,
+        'current': round(current, 1),
+        'target': target,
+        'required': required,
+        'completed_weight': round(completed_weight, 1),
+        'remaining_weight': round(max(0, 100 - completed_weight), 1),
+        'entered_weight': round(entered_weight, 1),
+        'achieved': required < 0,
+        'impossible': required > 100,
+    }
 
 
 def get_or_create_topic(subject, raw_name):
