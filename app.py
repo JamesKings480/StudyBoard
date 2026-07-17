@@ -254,15 +254,6 @@ def set_security_headers(response):
     response.headers['X-XSS-Protection'] = '1; mode=block'
     return response
 
-
-@app.context_processor
-def inject_sidebar_subjects():
-    if current_user.is_authenticated:
-        subjects = Subject.query.filter_by(user_id=current_user.id).order_by(Subject.name).all()
-        return dict(sidebar_subjects=subjects)
-    return dict(sidebar_subjects=[])
-
-
 @app.route('/')
 def index():
     if current_user.is_authenticated:
