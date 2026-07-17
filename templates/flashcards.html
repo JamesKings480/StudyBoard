@@ -76,11 +76,11 @@
                 </div>
                 <div class="mb-2">
                     <label class="form-label small mb-1">Question</label>
-                    {{ form.question(class="form-control form-control-sm", rows="2", placeholder="What are the reactants of photosynthesis?") }}
+                    {{ form.question(class="form-control form-control-sm", rows="2", placeholder="What is Australia's current Interest Rate?") }}
                 </div>
                 <div class="mb-3">
                     <label class="form-label small mb-1">Answer</label>
-                    {{ form.answer(class="form-control form-control-sm", rows="2", placeholder="Carbon dioxide and water, using light energy") }}
+                    {{ form.answer(class="form-control form-control-sm", rows="2", placeholder="The current interest rate is 3.10%") }}
                 </div>
                 {{ form.submit(class="btn btn-primary btn-sm") }}
             </form>
@@ -99,7 +99,7 @@
                 <span class="badge bg-danger">{{ work_on|length }}</span>
             </div>
             <div class="card-body p-0">
-                {{ topic_list(work_on, 'text-danger', 'bi-emoji-sunglasses', 'Strong Topics') }}
+                {{ topic_list(work_on, 'text-danger', 'bi-emoji-sunglasses', 'Nothing needs work. Make some cards or go again on a strong topic.') }}
             </div>
         </div>
     </div>
@@ -107,8 +107,11 @@
     <div class="col-lg-6">
         <div class="card shadow-sm h-100">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-bold"><i class="bi bi-check-circle text-success me-2"></i>Strong topics</h6>
+                <h6 class="mb-0 fw-bold"><i class="bi bi-check-circle text-success me-2"></i>Strong Topics</h6>
                 <span class="badge bg-success">{{ strong|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {{ topic_list(strong, 'text-success', 'bi-graph-up', 'Nothing yet. A topic needs ' ~ min_reviews ~ ' answers at ' ~ strong_threshold ~ '% or better to land here.') }}
             </div>
         </div>
     </div>
