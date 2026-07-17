@@ -207,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setupDropZone();
     setupFlashcardDeck();
     setupSettings();
+    setupTour();
 });
 
 function pickFile(acceptTypes) {
@@ -424,4 +425,134 @@ function setupSettings() {
             applySetting(name, cssClass, input.checked);
         });
     });
+}
+
+var SB_TOUR = [
+    {
+        icon: 'bi-grid-1x2',
+        title: 'Your dashboard',
+        body: 'Everything due today, your study timer, and how each subject is tracking, all on one screen. Start here.'
+    },
+    {
+        icon: 'bi-book',
+        title: 'Start with your subjects',
+        body: 'Add each HSC subject you take and give it a colour. That colour follows it everywhere, so you can spot Chemistry at a glance. Every assessment, note and flashcard are based on a subject.'
+    },
+    {
+        icon: 'bi-magic',
+        title: 'Add an assessment, get a plan',
+        body: 'Upload your task notification as a PDF or Word file and the AI reads it, then breaks it into dated subtasks working backwards from the due date.'
+    },
+    {
+        icon: 'bi-check2-square',
+        title: 'Tick things off',
+        body: 'Your subtasks land in Today automatically. Add your own to-dos alongside them. Tick one and it turns green and stays put, so you can see what you got done.'
+    },
+    {
+        icon: 'bi-card-text',
+        title: 'Find your weak topics',
+        body: 'Make flashcards under a topic, then quiz yourself and mark each one right or wrong. Studyboard tracks every answer and tells you which topics need work and which you have nailed.'
+    },
+    {
+        icon: 'bi-graph-up-arrow',
+        title: 'Know where you stand',
+        body: 'Record a mark and your predicted internal grade updates. Set a target and it tells you the average you need on what is left, or that you have already got there.'
+    }
+];
+
+var tourIndex = 0;
+var tourModalInstance = null;
+
+function showTourStep() {
+    var step = SB_TOUR[tourIndex];
+    var last = tourIndex === SB_TOUR.length - 1;
+
+    document.getElementById('tourIcon').className = 'bi ' + step.icon;
+    document.getElementById('tourTitle').textContent = step.title;
+    document.getElementById('tourBody').textContent = step.body;
+    document.getElementById('tourStepText').textContent = 'Step ' + (tourIndex + 1) + ' of ' + SB_TOUR.length;
+
+    var dots = '';
+    for (var i = 0; i < SB_TOUR.length; i++) {
+        dots += '<span class="sb-tour-dot' + (i === tourIndex ? ' active' : '') + '"></span>';
+    }
+    document.getElementById('tourDots').innerHTML = dots;
+
+    document.getElementById('tourBack').style.display = tourIndex === 0 ? 'none' : 'inline-block';
+    document.getElementById('tourSkip').style.display = last ? 'none' : 'inline-block';
+    document.getElementById('tourNext').textContent = last ? 'Done' : 'Next';
+}
+
+function markTourSeen() {
+    var el = document.getElementById('tourModal');
+    if (!el || el.dataset.sbSeenSent) return;
+    el.dataset.sbSeenSent = '1';
+
+    fetch(el.getAttribute('data-sb-seen-url'), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(function (response) {
+        if (!response.ok) console.error('TOUR SEEN failed, status ' + response.status);
+    })
+    .catch(function (error) {
+        console.error('TOUR SEEN network error:', error);
+    });
+}
+
+function startTour() {
+    var el = document.getElementById('tourModal');
+    if (!el) return;
+    tourIndex = 0;
+    showTourStep();
+    if (!tourModalInstance) tourModalInstance = new bootstrap.Modal(el);
+    tourModalInstance.show();
+}
+
+function setupTour() {
+    var el = document.getElementById('tourModal');
+    if (!el) return;
+
+    document.getElementById('tourNext').addEventListener('click', function () {
+        if (tourIndex === SB_TOUR.length - 1) {
+            markTourSeen();
+            tourModalInstance.hide();
+            return;
+        }
+        tourIndex++;
+        showTourStep();
+    });
+
+    document.getElementById('tourBack').addEventListener('click', function () {
+        if (tourIndex > 0) {
+            tourIndex--;
+            showTourStep();
+        }
+    });
+
+    document.getElementById('tourSkip').addEventListener('click', markTourSeen);
+    el.addEventListener('hidden.bs.modal', markTourSeen);
+
+    var help = document.getElementById('helpBtn');
+    if (help) {
+        help.addEventListener('click', function () {
+            var settingsEl = document.getElementById('settingsModal');
+            var settings = bootstrap.Modal.getInstance(settingsEl);
+            if (!settings) {
+                startTour();
+                return;
+            }
+            settingsEl.addEventListener('hidden.bs.modal', function once() {
+                settingsEl.removeEventListener('hidden.bs.modal', once);
+                startTour();
+            });
+            settings.hide();
+        });
+    }
+    if (el.hasAttribute('data-sb-autostart')) {
+        startTour();
+    }
 }

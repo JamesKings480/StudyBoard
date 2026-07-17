@@ -351,11 +351,20 @@ def dashboard():
             daily_totals[day_index] += s.duration_minutes
     max_daily = max(daily_totals) if max(daily_totals) > 0 else 1
     grades = {s.id: get_grade_summary(s) for s in subjects}
+    show_tour = not current_user.has_seen_tour
     todo_form = TodoItemForm()
     todo_form.subject_id.choices = [(s.id, s.name) for s in subjects]
     todo_form.scheduled_date.data = today
     day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return render_template('dashboard.html', subjects=subjects, upcoming_assessments=upcoming_assessments, todays_items=todays_items, todo_form=todo_form, grades=grades, total_weekly_minutes=total_weekly_minutes, weekly_display=weekly_display, daily_totals=daily_totals, max_daily=max_daily, day_names=day_names, today=today)
+    return render_template('dashboard.html', subjects=subjects, upcoming_assessments=upcoming_assessments, todays_items=todays_items, todo_form=todo_form, grades=grades, show_tour=show_tour, total_weekly_minutes=total_weekly_minutes, weekly_display=weekly_display, daily_totals=daily_totals, max_daily=max_daily, day_names=day_names, today=today)
+
+@app.route('/tour/seen', methods=['POST'])
+@login_required
+def mark_tour_seen():
+    current_user.has_seen_tour = True
+    db.session.commit()
+    return jsonify({'success': True})
+
 
 @app.route('/study/save', methods=['POST'])
 @login_required
