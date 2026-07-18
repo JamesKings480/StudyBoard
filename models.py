@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
-
+# Picks the Bootstrap icon for a file type.
 def file_icon_for(filename):
     ext = filename.rsplit('.', 1)[-1].lower() if filename and '.' in filename else ''
     if ext == 'pdf':
@@ -19,7 +19,7 @@ def file_icon_for(filename):
         return 'bi-file-earmark-image'
     return 'bi-file-earmark-text'
 
-
+# Turns raw bytes into something readable like 340 KB
 def size_text_for(size_bytes):
     if not size_bytes:
         return ''
@@ -28,7 +28,7 @@ def size_text_for(size_bytes):
         return str(round(kb / 1024, 1)) + ' MB'
     return str(round(kb)) + ' KB'
 
-
+# UserMixin gives me is_authenticated and get_id so Flask-Login works.
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -37,14 +37,15 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     has_seen_tour = db.Column(db.Boolean, nullable=False, default=False)
     study_sessions = db.relationship('StudySession', backref='user', lazy=True, cascade='all, delete-orphan')
-
+    # Hashes on the way in so the real password is never stored anywhere.
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-
+    # Compares a login attempt against the stored hash.
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-
+# Everything is based of a subject and the cascades mean deleting e.g economics takes its
+# assessments and their subtasks with it instead of leaving orphan rows.
 class Subject(db.Model):
     __tablename__ = 'subjects'
     id = db.Column(db.Integer, primary_key=True)
@@ -64,10 +65,13 @@ class Subject(db.Model):
 
     topics = db.relationship('Topic', backref='subject', lazy=True, cascade='all, delete-orphan')
 
+    # Cards belong to a topic and the topic belongs to a subject, so there is no direct link
     @property
     def flashcards(self):
         return Flashcard.query.join(Topic).filter(Topic.subject_id == self.id).all()
 
+# task_file_data is deferred, so SQLAlchemy leaves the blob alone until something
+# asks for it, without that, listing 20 assessments would pull 20 PDFs into memory which is not ideal.
 class Assessment(db.Model):
     __tablename__ = 'assessments'
     id = db.Column(db.Integer, primary_key=True)
@@ -93,6 +97,7 @@ class Assessment(db.Model):
     def task_file_size_text(self):
         return size_text_for(self.task_file_size)
 
+# a subtask, is_todo and context_label let the dashboard mix tasks and to-dos into one Today list
 class Task(db.Model):
     __tablename__ = 'tasks'
     id = db.Column(db.Integer, primary_key=True)
@@ -114,7 +119,7 @@ class Task(db.Model):
     @property
     def context_label(self):
         return self.assessment.name
-    
+# A note or handout stored against a subject
 class SubjectFile(db.Model):
     __tablename__ = 'subject_files'
     id = db.Column(db.Integer, primary_key=True)
@@ -132,7 +137,7 @@ class SubjectFile(db.Model):
     def size_text(self):
         return size_text_for(self.file_size)
 
-
+# your own to-do, not attached to any assessment so it saves you from attaching a todo to a subject
 class TodoItem(db.Model):
     __tablename__ = 'todo_items'
     id = db.Column(db.Integer, primary_key=True)
@@ -150,7 +155,7 @@ class TodoItem(db.Model):
     def context_label(self):
         return 'To-do'
 
-
+# One timer session
 class StudySession(db.Model):
     __tablename__ = 'study_sessions'
     id = db.Column(db.Integer, primary_key=True)
@@ -159,7 +164,6 @@ class StudySession(db.Model):
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
 
 class Topic(db.Model):
     __tablename__ = 'topics'
@@ -174,7 +178,7 @@ class Topic(db.Model):
         db.UniqueConstraint('subject_id', 'name', name='uq_topic_name_per_subject'),
     )
 
-
+# No subject_id on purpose as the topic already knows its subject in db
 class Flashcard(db.Model):
     __tablename__ = 'flashcards'
     id = db.Column(db.Integer, primary_key=True)
