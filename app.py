@@ -10,6 +10,8 @@ from docx import Document as DocxDocument
 from werkzeug.utils import secure_filename
 from groq_client import generate_subtasks
 
+# Every HSC subject mapped to its NESA syllabus page. A dict not a table since it
+# never changes while the app is running.
 HSC_SUBJECTS = {
     'English Standard': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-standard-stage-6-2017',
     'English Advanced': 'https://www.nsw.gov.au/education-and-training/nesa/curriculum/english/english-advanced-stage-6-2017',
@@ -76,11 +78,15 @@ STRONG_ACCURACY_PERCENT = 70
 MIN_REVIEWS_FOR_STRONG = 3
 MAX_FILE_SIZE = 5 * 1024 * 1024 
 
+
+# Checks a filename's extension against a whitelist. The allowed set is an argument
+# because notes and task notifications take different types
 def allowed_file(filename, allowed=None):
     allowed = allowed or ALLOWED_EXTENSIONS
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed
 
-
+# Cleans up an uploaded filename. secure_filename strips non ascii and can take the
+# extension with it, so I put it back if it went missing
 def safe_filename(original_name):
     filename = secure_filename(original_name)
     if '.' not in filename:
@@ -88,6 +94,13 @@ def safe_filename(original_name):
     return filename
 
 
+def safe_redirect_back():
+    # request.referrer comes from the browser so it cannot be trusted on its own.
+    if request.referrer and request.referrer.startswith(request.host_url):
+        return redirect(request.referrer)
+    return redirect(url_for('dashboard'))
+
+# Sends a file back out of the database blob. PDFs and images open in the browser, everything else downloads
 def serve_stored_file(name, data):
     ext = name.rsplit('.', 1)[-1].lower()
     return send_file(
@@ -97,6 +110,7 @@ def serve_stored_file(name, data):
         download_name=name
     )
 
+# Pulls the plain text out of a PDF, Word or txt file
 def extract_text_from_file(uploaded_file, filename):
     ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
     text = ''
@@ -125,7 +139,8 @@ def extract_text_from_file(uploaded_file, filename):
         return ''
     return text.strip()
 
-
+# Runs every upload check in order and hands back the text, the file to store, and an
+# error or None.
 def get_notification_text(form):
     typed_text = form.task_notification.data.strip() if form.task_notification.data else ''
 
@@ -156,6 +171,7 @@ def get_notification_text(form):
     file_info = {'name': filename, 'size': file_size, 'data': file_data}
     return extracted[:MAX_NOTIFICATION_CHARS], file_info, None
 
+# The standard steps for each assessment type, used when the AI is not available
 FALLBACK_STEPS = {
     'Essay': [
         'Read the task notification and marking criteria',
@@ -208,7 +224,7 @@ FALLBACK_STEPS = {
     ],
 }
 
-
+# Spreads the standard steps evenly across the days available.
 def build_fallback_subtasks(assessment_type, days_available):
     steps = FALLBACK_STEPS.get(assessment_type, FALLBACK_STEPS['Other'])
     subtasks = []
@@ -217,7 +233,8 @@ def build_fallback_subtasks(assessment_type, days_available):
         subtasks.append({'title': title, 'days_before_due': int(days_available * fraction)})
     return subtasks
 
-
+# Turns days_before_due into real dates counting back from the due date. Clamped to
+# today so nothing gets scheduled in the past where nobody would see it.
 def save_subtasks(assessment, subtasks):
     today = date.today()
     for item in subtasks:
@@ -243,11 +260,14 @@ login_manager.login_message = 'Please log in to access this page.'
 
 
 @login_manager.user_loader
+# Flask-Login uses this to turn the id in the session cookie back into a User
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
 @app.after_request
+# Adds the security headers to every response. nosniff matters most since I serve
+# user uploaded files back out of the database.
 def set_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
@@ -262,6 +282,8 @@ def index():
 
 
 @app.route('/register', methods=['GET', 'POST'])
+# Makes an account, the duplicate message is vague on purpose so nobody can use it to
+# check who has an account here
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
@@ -281,6 +303,7 @@ def register():
 
 
 @app.route('/login', methods=['GET', 'POST'])
+# Logs you in
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
@@ -304,6 +327,7 @@ def logout():
 
 @app.route('/dashboard')
 @login_required
+# Builds the whole dashboard, today's items, the weekly chart and every predicted grade
 def dashboard():
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())
@@ -360,6 +384,7 @@ def dashboard():
 
 @app.route('/tour/seen', methods=['POST'])
 @login_required
+# Marks the tour as seen for this account
 def mark_tour_seen():
     current_user.has_seen_tour = True
     db.session.commit()
@@ -368,6 +393,7 @@ def mark_tour_seen():
 
 @app.route('/study/save', methods=['POST'])
 @login_required
+# Checks the subject is yours first, since subject_id comes from the page and anyone can send anything
 def save_study_session():
     data = request.get_json()
     if not data:
@@ -391,12 +417,14 @@ def save_study_session():
 
 @app.route('/subjects')
 @login_required
+# Lists your subjects
 def subjects_list():
     subjects = Subject.query.filter_by(user_id=current_user.id).order_by(Subject.name).all()
     return render_template('subjects.html', subjects=subjects)
 
 @app.route('/subject/new', methods=['GET', 'POST'])
 @login_required
+# Adds a subject and grabs its NESA link out of HSC_SUBJECTS
 def create_subject():
     form = SubjectForm()
     form.name.choices = [(s, s) for s in HSC_SUBJECTS.keys()]
@@ -415,6 +443,7 @@ def create_subject():
     return render_template('subject_form.html', form=form, title='Add New Subject')
 
 @app.route('/subject/<int:subject_id>')
+# One subject with its assessments, notes and predicted grade
 @login_required
 def subject_detail(subject_id):
     subject = Subject.query.get_or_404(subject_id)
@@ -427,6 +456,7 @@ def subject_detail(subject_id):
 
 @app.route('/subject/<int:subject_id>/edit', methods=['GET', 'POST'])
 @login_required
+# Saves a target grade
 def edit_subject(subject_id):
     subject = Subject.query.get_or_404(subject_id)
     if subject.user_id != current_user.id:
@@ -481,6 +511,7 @@ def delete_subject(subject_id):
 
 @app.route('/subject/<int:subject_id>/file/new', methods=['POST'])
 @login_required
+# Stores a subject note as a blob
 def upload_subject_file(subject_id):
     subject = Subject.query.get_or_404(subject_id)
     if subject.user_id != current_user.id:
@@ -541,6 +572,7 @@ def delete_subject_file(file_id):
 
 @app.route('/subject/<int:subject_id>/assessment/new', methods=['GET', 'POST'])
 @login_required
+# Makes the assessment then asks Groq for a plan, falls back to the standard steps if Groq gives me nothing
 def create_assessment(subject_id):
     subject = Subject.query.get_or_404(subject_id)
     if subject.user_id != current_user.id:
@@ -580,6 +612,7 @@ def create_assessment(subject_id):
     return render_template('assessment_form.html', form=form, subject=subject, assessment=None, title='New Assessment')
 
 @app.route('/assessment/<int:assessment_id>')
+# One assessment with its subtask timeline
 @login_required
 def assessment_detail(assessment_id):
     assessment = Assessment.query.get_or_404(assessment_id)
@@ -592,6 +625,7 @@ def assessment_detail(assessment_id):
     return render_template('assessment_detail.html', assessment=assessment, subject=subject, tasks=tasks, mark_form=mark_form, today=date.today())
 
 @app.route('/assessment/<int:assessment_id>/edit', methods=['GET', 'POST'])
+# Updates an assessment
 @login_required
 def edit_assessment(assessment_id):
     assessment = Assessment.query.get_or_404(assessment_id)
@@ -663,6 +697,7 @@ def delete_assessment(assessment_id):
 
 @app.route('/assessment/<int:assessment_id>/mark', methods=['POST'])
 @login_required
+# Records a mark and marks the assessment done, which is what feeds the predicted grades
 def save_mark(assessment_id):
     assessment = Assessment.query.get_or_404(assessment_id)
     if assessment.subject.user_id != current_user.id:
@@ -678,14 +713,16 @@ def save_mark(assessment_id):
 
 @app.route('/task/<int:task_id>/toggle', methods=['POST'])
 @login_required
+# Flips a subtask done or not done
 def toggle_task(task_id):
     task = Task.query.get_or_404(task_id)
     if task.assessment.subject.user_id != current_user.id:
         return jsonify({'error': 'Access denied'}), 403
     task.status = 'Complete' if task.status == 'Incomplete' else 'Incomplete'
     db.session.commit()
-    return redirect(request.referrer or url_for('dashboard'))
+    return safe_redirect_back()
 
+# Counts reviews per topic in one grouped query that is called twice, all reviews and just the correct ones
 def _review_counts_by_topic(user_id, only_correct=False):
     query = db.session.query(
         Flashcard.topic_id, db.func.count(FlashcardReview.id)
@@ -700,7 +737,7 @@ def _review_counts_by_topic(user_id, only_correct=False):
         query = query.filter(FlashcardReview.was_correct == True)
     return dict(query.group_by(Flashcard.topic_id).all())
 
-
+# Splits your topics into strong and needs work, a topic needs MIN_REVIEWS_FOR_STRONG
 def get_topic_stats(user_id, subject_id=None):
     topic_query = Topic.query.join(Subject).filter(Subject.user_id == user_id)
     if subject_id:
@@ -761,7 +798,7 @@ def calculate_required_mark(subject_id, target_grade, current_grade):
     needed_weighted_marks = target_grade - earned_weighted_marks
     return round((needed_weighted_marks / remaining_weight) * 100, 1)
 
-
+# wraps both grade functions into one dict so the template does no maths itself
 def get_grade_summary(subject):
     completed = Assessment.query.filter_by(subject_id=subject.id, status='Completed').all()
     completed_weight = sum(a.weighting for a in completed if a.mark is not None)
@@ -795,7 +832,7 @@ def get_or_create_topic(subject, raw_name):
     db.session.flush()
     return topic
 
-
+# Builds the flashcard form with your own subjects in the dropdown
 def build_flashcard_form():
     subjects = Subject.query.filter_by(user_id=current_user.id).order_by(Subject.name).all()
     form = FlashcardForm()
@@ -808,7 +845,7 @@ def flash_form_errors(form):
         for error in field_errors:
             flash(error, 'danger')
 
-
+# Saves one right or wrong answer
 @app.route('/flashcard/<int:card_id>/review', methods=['POST'])
 @login_required
 def record_review(card_id):
@@ -823,7 +860,7 @@ def record_review(card_id):
     db.session.commit()
     return jsonify({'success': True})
 
-
+# The flashcards hub, both topic columns
 @app.route('/flashcards')
 @login_required
 def flashcards_page():
@@ -839,6 +876,7 @@ def flashcards_page():
 
 
 @app.route('/flashcard/new', methods=['POST'])
+# makes a card, creating its topic first if that topic is new
 @login_required
 def create_flashcard():
     form, subjects = build_flashcard_form()
@@ -881,6 +919,7 @@ def topic_review(topic_id):
 
 
 @app.route('/flashcard/<int:card_id>/edit', methods=['GET', 'POST'])
+# Updates a card
 @login_required
 def edit_flashcard(card_id):
     card = Flashcard.query.get_or_404(card_id)
@@ -916,7 +955,7 @@ def edit_flashcard(card_id):
     flash_form_errors(form)
     return render_template('flashcard_form.html', form=form, card=card, title='Edit Flashcard')
 
-
+# Deletes a card.
 @app.route('/flashcard/<int:card_id>/delete', methods=['POST'])
 @login_required
 def delete_flashcard(card_id):
@@ -935,7 +974,7 @@ def delete_flashcard(card_id):
     flash('Flashcard deleted.', 'info')
     return redirect(url_for('topic_review', topic_id=topic.id))
 
-
+# Adds a to-do
 @app.route('/todo/new', methods=['POST'])
 @login_required
 def create_todo():
@@ -964,6 +1003,7 @@ def create_todo():
 
 @app.route('/todo/<int:todo_id>/toggle', methods=['POST'])
 @login_required
+# Flips a to-do done or not done
 def toggle_todo(todo_id):
     todo = TodoItem.query.get_or_404(todo_id)
     if todo.subject.user_id != current_user.id:
@@ -971,7 +1011,7 @@ def toggle_todo(todo_id):
         return redirect(url_for('dashboard'))
     todo.status = 'Complete' if todo.status == 'Incomplete' else 'Incomplete'
     db.session.commit()
-    return redirect(request.referrer or url_for('dashboard'))
+    return safe_redirect_back()
 
 
 @app.route('/todo/<int:todo_id>/delete', methods=['POST'])
@@ -986,7 +1026,7 @@ def delete_todo(todo_id):
     flash('To-do deleted.', 'info')
     return redirect(url_for('dashboard'))
 
-
+# Adds your own subtask to an assessment, on top of the AI ones
 @app.route('/assessment/<int:assessment_id>/task/new', methods=['POST'])
 @login_required
 def add_task(assessment_id):

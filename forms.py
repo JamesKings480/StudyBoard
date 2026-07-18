@@ -5,7 +5,8 @@ from wtforms.validators import DataRequired, Email, EqualTo, Length, \
     NumberRange, ValidationError
 from datetime import date
 
-
+# All my validation is here, so WTForms does the checking and the CSRF token
+# together and every form gets both.
 class RegistrationForm(FlaskForm):
     email = StringField('Email', validators=[
         DataRequired(message='All fields are required'),
@@ -68,11 +69,12 @@ class AssessmentForm(FlaskForm):
                                      validators=[Length(max=20000)])
     submit = SubmitField('Save Assessment')
 
+    # WTForms picks up any validate_<field> method.
     def validate_due_date(self, field):
         if field.data and field.data < date.today():
             raise ValidationError('Due date must be a future date')
 
-
+# InputRequired, DataRequired counts anything falsy as missing.
 class MarkForm(FlaskForm):
     mark = FloatField('Mark (%)', validators=[
         DataRequired(),
@@ -92,6 +94,8 @@ class TaskForm(FlaskForm):
     submit = SubmitField('Add Task')
 
 
+# topic_name is free text, so typing a new one makes it and typing an
+# existing one adds to it.
 class FlashcardForm(FlaskForm):
     subject_id = SelectField('Subject', coerce=int, validators=[
         DataRequired(message='Pick a subject')
@@ -110,7 +114,7 @@ class FlashcardForm(FlaskForm):
     ])
     submit = SubmitField('Save flashcard')
 
-
+# A to-do needs a subject and a date.
 class TodoItemForm(FlaskForm):
     title = StringField('To-do', validators=[
         DataRequired(message='Give your to-do a title'),

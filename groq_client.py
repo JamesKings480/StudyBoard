@@ -1,9 +1,15 @@
+# my automated tests for Studyboard, run from the project folder with:
+#   python -m pytest test_studyboard.py -v
+# it runs on an in memory database so it never touches my real studyboard.db,
+# and the Groq call is swapped out with a fake so no test are ever outputted.
+
 import json
 from groq import Groq
 from config import Config
-
+# using the groq API 
 GROQ_MODEL = 'openai/gpt-oss-120b'
 
+# This is the format Groq has to answer in, it is strict on it literally cannot return anything else.
 SUBTASK_SCHEMA = {
     'type': 'object',
     'properties': {
@@ -25,7 +31,8 @@ SUBTASK_SCHEMA = {
     'additionalProperties': False
 }
 
-
+# Builds the prompt, makes sure prompt is specific without it every
+# assessment comes back with 'do some research'.
 def build_subtask_prompt(assessment_type, days_available, task_text):
     prompt = 'You are a study planning assistant for HSC students. '
     prompt += 'Read the following assessment task notification and break it into '
@@ -44,6 +51,8 @@ def build_subtask_prompt(assessment_type, days_available, task_text):
     return prompt
 
 
+# Never trust the model even with a schema for security reasons. Drops blank titles, caps the length for
+# the column, forces days to a non negative int.
 def clean_subtasks(raw_subtasks):
     cleaned = []
     for item in raw_subtasks:
@@ -61,7 +70,8 @@ def clean_subtasks(raw_subtasks):
         })
     return cleaned
 
-
+# Asks Groq for a plan or returns None on any failure at all, which is the signal to
+# app.py to use the fallback instead.
 def generate_subtasks(assessment_type, days_available, task_text):
     if not Config.GROQ_API_KEY:
         print('GROQ ERROR: no API key loaded, check your .env')

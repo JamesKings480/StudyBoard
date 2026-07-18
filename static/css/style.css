@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
+/* Pre-defines colors and structure for pages */
 :root {
     --sb-ink: #0E2A47;
     --sb-primary: #1D4ED8;
@@ -94,6 +94,7 @@ small, .small {
     padding: 1.5rem 1.5rem 3rem;
 }
 
+/* This part is the top nav, White bar with a tint pill on the active page. */
 .sb-topbar {
     position: sticky;
     top: 0;
@@ -217,6 +218,7 @@ small, .small {
     text-decoration: underline;
 }
 
+/* This part is the cards, The hover lift is the only movement in the whole design to reduce animation and lag. */
 .card {
     border: 1px solid var(--sb-border);
     border-radius: var(--sb-radius-card);
@@ -278,6 +280,8 @@ small, .small {
     line-height: 1;
 }
 
+/* This part is the study timer ring. The SVG is rotated -90deg so it fills from
+   twelve o'clock instead of three. */
 .circular-timer {
     position: relative;
     width: 160px;
@@ -328,6 +332,8 @@ small, .small {
     transition: width 0.5s ease;
 }
 
+/* This part is the badges, align-self stops them stretching to their flex row
+   height and ballooning into an oval, which took me a while to work out. */
 .badge {
     font-size: 11px;
     font-weight: 700;
@@ -375,6 +381,9 @@ small, .small {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
+
+/* Subtask timeline, the line is a ::before on the container so it
+   is one continuous line, not a border per item that would break at the gaps. */
 .assessment-timeline {
     position: relative;
     padding-left: 2rem;
@@ -444,6 +453,8 @@ small, .small {
     color: #9ca3af;
 }
 
+/*weekly study chart, Plain flexbox, seven bars did not seem
+   worth a whole chart library. */
 .bar-chart {
     display: flex;
     align-items: flex-end;
@@ -564,6 +575,7 @@ small, .small {
     color: var(--sb-ink);
 }
 
+/* This part is the upload drop zone and the file preview card */
 .upload-drop-zone {
     border: 2px dashed var(--sb-border);
     border-radius: var(--sb-radius-control);
@@ -650,6 +662,8 @@ a.file-preview-card:hover .file-preview-open {
     color: var(--sb-primary);
 }
 
+
+/* This part is the subtask boxes and the expandable AI description. */
 .subtask-box {
     background-color: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -709,6 +723,8 @@ a.file-preview-card:hover .file-preview-open {
     white-space: pre-line;
 }
 
+
+/* This is the to-do list*/
 .today-item.todo-done {
     background-color: var(--sb-success-tint);
 }
@@ -753,6 +769,7 @@ a.file-preview-card:hover .file-preview-open {
     min-width: 0;
 }
 
+/* This is the flashcard review screen */
 .flashcard-question {
     font-size: 1.35rem;
     font-weight: 800;
@@ -782,6 +799,7 @@ a.file-preview-card:hover .file-preview-open {
     line-height: 1.1;
 }
 
+/* These are the buttons css */
 .btn {
     border-radius: var(--sb-radius-control);
     font-size: 12.5px;
@@ -837,6 +855,8 @@ a.file-preview-card:hover .file-preview-open {
 .btn-success { background-color: var(--sb-success); border-color: var(--sb-success); }
 .btn-danger  { background-color: var(--sb-danger);  border-color: var(--sb-danger); }
 
+/* This part is the inputs, focus is a blue border plus a tint ring so you can see
+   where you are when tabbing with no mouse and adds aestetic and interactivity. */
 .form-control,
 .form-select {
     border: 1px solid var(--sb-border);
@@ -882,7 +902,7 @@ a.file-preview-card:hover .file-preview-open {
     font-size: 13px;
     font-weight: 600;
 }
-
+/* This part is the predicted grade, color matches with how well you are doing. */
 .grade-big {
     font-size: 1.75rem;
     font-weight: 800;
@@ -912,6 +932,7 @@ a.file-preview-card:hover .file-preview-open {
     color: var(--sb-danger-text);
 }
 
+/*Settings panel and the tour modal. */
 .sb-icon-btn {
     background: none;
     border: none;
