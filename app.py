@@ -88,6 +88,13 @@ def safe_filename(original_name):
     return filename
 
 
+def safe_redirect_back():
+    # request.referrer comes from the browser so it cannot be trusted on its own.
+    if request.referrer and request.referrer.startswith(request.host_url):
+        return redirect(request.referrer)
+    return redirect(url_for('dashboard'))
+
+
 def serve_stored_file(name, data):
     ext = name.rsplit('.', 1)[-1].lower()
     return send_file(
@@ -684,7 +691,7 @@ def toggle_task(task_id):
         return jsonify({'error': 'Access denied'}), 403
     task.status = 'Complete' if task.status == 'Incomplete' else 'Incomplete'
     db.session.commit()
-    return redirect(request.referrer or url_for('dashboard'))
+    return safe_redirect_back()
 
 def _review_counts_by_topic(user_id, only_correct=False):
     query = db.session.query(
@@ -971,7 +978,7 @@ def toggle_todo(todo_id):
         return redirect(url_for('dashboard'))
     todo.status = 'Complete' if todo.status == 'Incomplete' else 'Incomplete'
     db.session.commit()
-    return redirect(request.referrer or url_for('dashboard'))
+    return safe_redirect_back()
 
 
 @app.route('/todo/<int:todo_id>/delete', methods=['POST'])
